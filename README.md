@@ -1,10 +1,10 @@
 # CompareONEToIB.cs
 
-This program compares exported data from OptioneNet Explorer (ONE) to that from Interactibe Brokers(IB) to make
+This program compares exported data from OptioneNet Explorer (ONE) to that from Interactive Brokers(IB) to make
 sure that the option positions actually held in IB are the ones that are beng modeled by ONE.
 
-The IB data is exported by running IB's Trader WorkStation, openinh the Account Window, goong to the File menu
-and selecting Export Portfolio. THis is what the data looks like:
+The IB data is exported by running IB's Trader WorkStation, opening the Account Window, going to the File menu
+and selecting Export Portfolio. This is what the data looks like:
 
 ```
 Portfolio
@@ -17,7 +17,7 @@ UXXXXXXX,SPX    APR2022 4200 P [SPX   220414P04200000 100],CBOE,2,USD,95.0227967
 ```
 
 The ONE data is exported by opening ONE, clicking on Reports, then on the Reports window, clicking on the little filter icon on the Account dropdown
-and selecting the account that holds the trades you want to compare with, than clicking the Export button and saving the file. This is what the data looks like:
+and selecting the account that holds the trades you want to compare with, then clicking the Export button and saving the file. This is what the data looks like:
 
 ```
 ONE Detail Report
