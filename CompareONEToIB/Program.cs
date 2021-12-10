@@ -49,15 +49,22 @@ static class Program
         string[] files;
         if (Directory.Exists(one_directory))
         {
+            DateTime latestDate = new(1000, 1, 1);
+            string latest_full_filename = "";
             files = Directory.GetFiles(one_directory, '*' + ending, SearchOption.TopDirectoryOnly);
             bool file_found = false;
-            foreach(string full_fn in files)
+            foreach(string full_filename in files)
             {
-                string filename = Path.GetFileName(full_fn);
-                string datestr = filename.Substring(0, filename.Length - ending.Length);
-                if (DateTime.TryParse(datestr, out DateTime dateValue))
+                string filename = Path.GetFileName(full_filename);
+                string datestr = filename[..^ending.Length];
+                if (DateTime.TryParse(datestr, out DateTime dt))
                 {
                     file_found = true;
+                    if (dt > latestDate)
+                    {
+                        latestDate = dt;
+                        latest_full_filename = full_filename;
+                    }
                 }
                 else
                 {
@@ -66,9 +73,13 @@ static class Program
             }
             if (!file_found)
             {
-                Console.WriteLine("***Error*** No OptionNet files found");
+                Console.WriteLine("***Error*** No valid OptionNet files found");
                 return false;
             }
+
+            bool rc = ProcessONEFile(latest_full_filename);
+            if (!rc)
+                return false;
         }
         else
         {
@@ -87,7 +98,7 @@ static class Program
         string[] files;
         if (Directory.Exists(ib_directory))
         {
-            DateTime latestDate = new DateTime(1000, 1, 1);
+            DateTime latestDate = new(1000, 1, 1);
             string latest_full_filename = "";
             files = Directory.GetFiles(ib_directory, filename_pattern, SearchOption.TopDirectoryOnly);
             bool file_found = false;
@@ -99,23 +110,23 @@ static class Program
                     Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
                     continue;
                 }
-                string datestr = filename.Substring(filename_prefix_len);
+                string datestr = filename[filename_prefix_len..];
                 if (datestr.Length != 12) // yyyymmdd.csv
                 {
                     Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
                     continue;
                 }
-                if (!int.TryParse(datestr.Substring(0, 4), out int year))
+                if (!int.TryParse(datestr[..4], out int year))
                 {
                     Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
                     continue;
                 }
-                if (!int.TryParse(datestr.Substring(4, 2), out int month))
+                if (!int.TryParse(datestr.AsSpan(4, 2), out int month))
                 {
                     Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
                     continue;
                 }
-                if (!int.TryParse(datestr.Substring(6, 2), out int day))
+                if (!int.TryParse(datestr.AsSpan(6, 2), out int day))
                 {
                     Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
                     continue;
@@ -138,8 +149,6 @@ static class Program
             bool rc = ProcessIBFile(latest_full_filename);
             if (!rc)
                 return false;
-            return true;
-
         }
         else
         {
@@ -151,7 +160,7 @@ static class Program
 
     static bool ProcessIBFile(string full_filename)
     {
-        using StreamReader sr = new StreamReader(full_filename);
+        using StreamReader sr = new(full_filename);
         Console.WriteLine("Processing IB file: " +  full_filename);
 
         string? line1 = sr.ReadLine();
@@ -170,9 +179,30 @@ static class Program
         return true;
     }
 
+    static bool ProcessONEFile(string full_filename)
+    {
+        using StreamReader sr = new(full_filename);
+        Console.WriteLine("Processing ONE file: " + full_filename);
+
+        string? line1 = sr.ReadLine();
+        if (line1 == null)
+        {
+            Console.WriteLine("***Error*** File empty");
+            return false;
+
+        }
+        line1 = line1.Trim();
+        if (line1 != "ONE Detail Report")
+        {
+            Console.WriteLine("***Error*** First line of IB file must be 'ONE Detail Report'");
+            return false;
+        }
+
+        return true;
+    }
+
     static bool CompareONEToIB()
     {
         return true;
     }
-
 }
