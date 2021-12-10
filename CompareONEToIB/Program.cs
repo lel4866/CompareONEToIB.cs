@@ -6,6 +6,10 @@ static class Program
 {
     public const string version = "0.0.1";
     public const string version_date = "2021-12-08";
+    public const string ib_directory = @"C: \Users\lel48\OneDrive\Documents\IBExport\";
+    public const string one_directory = @"C:\Users\lel48\OneDrive\Documents\ONEExport\";
+
+
 
     static int Main(string[] args)
     {
@@ -41,6 +45,36 @@ static class Program
 
     static bool ReadONEData()
     {
+        const string ending = "-ONEDetailReport.csv";
+        string[] files;
+        if (Directory.Exists(one_directory))
+        {
+            files = Directory.GetFiles(one_directory, '*' + ending, SearchOption.TopDirectoryOnly);
+            bool file_found = false;
+            foreach(string full_fn in files)
+            {
+                string filename = Path.GetFileName(full_fn);
+                string datestr = filename.Substring(0, filename.Length - ending.Length);
+                if (DateTime.TryParse(datestr, out DateTime dateValue))
+                {
+                    file_found = true;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            if (!file_found)
+            {
+                Console.WriteLine("***Error*** No OptionNet files found");
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
         return true;
     }
 
