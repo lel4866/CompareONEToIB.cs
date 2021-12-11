@@ -10,6 +10,8 @@ static class Program
     public const string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
     public const string one_directory = @"C:\Users\lel48\OneDrive\Documents\ONEExport\";
 
+    static string one_account = "";
+    static string ib_account = "";
 
     static int Main(string[] args)
     {
@@ -186,6 +188,18 @@ static class Program
             Console.WriteLine("***Error*** First line of IB file must start with: Account,Financial Instrument Description,Exchange,Position,...");
             return false;
         }
+
+        for (int line_index = 2; line_index < lines.Length; line_index++)
+        {
+            string[] fields = lines[line_index].Split(',');
+            ib_account = fields[0].Trim();
+            if (ib_account.Length == 0)
+            {
+                Console.WriteLine($"***Error*** Account id (first field) in IB line #{line_index + 1} is blank");
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -271,59 +285,109 @@ static class Program
         }
 
         // account appears here in line 9, in the Trade lines, and in the Position lines. They must all match
-        string account = lines[8].Trim();
-        if (account.Length == 0)
+        one_account = lines[8].Trim();
+        if (one_account.Length == 0)
         {
-            Console.WriteLine($"***Error*** Ninth line of ONE must be account name, not blank");
+            Console.WriteLine($"***Error*** Ninth line of ONE must be ONE account name, not blank");
             return false;
         }
 
         // parse Trade and Position lines
+        bool existing_trade = false;
         for (int line_index = 9; line_index < lines.Length; line_index++)
         {
-            // Parse Trade line
-            string trade_line = lines[9].Trim();
-            string[] fields = trade_line.Split(',');
-            if (fields.Length != 16)
+            // fields[0] must be blank;
+            // if fields[1] is blank, this is a position line, otherwise it is a trade line
+            string line = lines[line_index].Trim();
+            string[] fields = line.Split(',');
+            if (fields.Length < 14)
             {
-                Console.WriteLine($"***Error*** Trade line #{line_index+1} must have 16 fields, not {fields.Length} fields");
-                return false;
-
-            }
-            string account_in_trade_line = fields[1].Trim();
-            if (!RemoveQuotes(line_index+1, "Account", account_in_trade_line, out string stripped_field))
-                return false;
-            if (account != account_in_trade_line)
-            {
-                Console.WriteLine($"***Error*** In Trade line #{line_index + 1}, account field: {account_in_trade_line} is not the same as line 9 of file: {account}");
+                Console.WriteLine($"***Error*** ONE Trade/Position line #{line_index + 1} must have at least 14 fields, not {fields.Length} fields");
                 return false;
             }
 
-            string trade_date_string = fields[2].Trim();
-            if (!DateTime.TryParse(trade_date_string, out DateTime trade_dt))
-            {
-                Console.WriteLine($"***Error*** Trade line #{line_index + 1} has invalid date field: {trade_date_string}");
-                return false;
+            bool rc;
+            string account1 = fields[1].Trim();
+            if (account1.Length != 0) {
+                if (existing_trade)
+                {
+                    // do whatever when we've parsed all position lines for trade
+                }
+
+                // start new trade
+                rc = ParseONETradeLine(line_index, fields);
+                if (!rc)
+                    return false;
+                existing_trade = true;
+                continue;
             }
-
-            string trade_id = fields[3].Trim();
-            if (trade_id.Length == 0)
+            else
             {
-                Console.WriteLine($"***Error*** Trade line #{line_index + 1} has empty trade id field");
-                return false;
+                if (!existing_trade)
+                {
+                    Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} comes before Trade line.");
+                    return false;
+                }
+
+                rc = ParseONEPositionLine(line_index, fields);
+                if (!rc)
+                    return false;
+                continue;
             }
-
-            if (!RemoveQuotes(line_index + 1, "trade name", fields[4], out stripped_field))
-                return false;
-
-            return true;
         }
-
 
         return true;
     }
 
-    static bool CompareONEToIB()
+    static bool ParseONETradeLine(int line_index, string[] fields) {
+        if (fields.Length != 16)
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} must have 16 fields, not {fields.Length} fields");
+            return false;
+        }
+
+        if (!RemoveQuotes(line_index+1, "Account", fields[1].Trim(), out string account1)) 
+                return false;
+
+        if (one_account != account1)
+        {
+            Console.WriteLine($"***Error*** In ONE Trade line #{line_index + 1}, account field: {account1} is not the same as line 9 of file: {one_account}");
+            return false;
+        }
+
+        string trade_date_string = fields[2].Trim();
+        if (!DateTime.TryParse(trade_date_string, out DateTime trade_dt))
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid date field: {trade_date_string}");
+            return false;
+        }
+
+        string trade_id = fields[3].Trim();
+        if (trade_id.Length == 0)
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has empty trade id field");
+            return false;
+        }
+
+        if (!RemoveQuotes(line_index + 1, "trade name", fields[4], out string trade_name))
+            return false;
+
+        return true;
+    }
+
+    static bool ParseONEPositionLine(int line_index, string[] fields)
+    {
+        if (fields.Length != 14)
+        {
+            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} must have 14 fields, not {fields.Length} fields");
+            return false;
+        }
+
+        return true;
+    }
+
+
+        static bool CompareONEToIB()
     {
         return true;
     }
