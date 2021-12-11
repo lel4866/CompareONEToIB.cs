@@ -255,48 +255,66 @@ static class Program
         }
 
         line1 = lines[6].Trim();
-        string one_header1 = ",Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc";
-        if (line1 != one_header1)
+        string one_trade_header = ",Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc";
+        if (line1 != one_trade_header)
         {
-            Console.WriteLine($"***Error*** Seventh line of ONE file must start with ',Account,Expiration,TradeId,TradeName,Underlying...', not: {line1}");
+            Console.WriteLine($"***Error*** Seventh line of ONE file (Trade Header) must start with ',Account,Expiration,TradeId,TradeName,Underlying...', not: {line1}");
             return false;
         }
 
         line1 = lines[7].Trim();
-        string one_header2 = ",,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission";
-        if (line1 != one_header2)
+        string one_position_header = ",,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission";
+        if (line1 != one_position_header)
         {
-            Console.WriteLine($"***Error*** Eighth line of ONE file must start with ',,Account,TradeId,Date,Transaction,Qty,Symbol...', not: {line1}");
+            Console.WriteLine($"***Error*** Eighth line of ONE file (Position Header) must start with ',,Account,TradeId,Date,Transaction,Qty,Symbol...', not: {line1}");
             return false;
         }
 
+        // account appears here in line 9, in the Trade lines, and in the Position lines. They must all match
         string account = lines[8].Trim();
         if (account.Length == 0)
         {
-            Console.WriteLine($"***Error*** Ninth line of ONE must account name, not blank");
+            Console.WriteLine($"***Error*** Ninth line of ONE must be account name, not blank");
             return false;
         }
 
+        // parse Trade and Position lines
         for (int line_index = 9; line_index < lines.Length; line_index++)
         {
-            string account_summary = lines[9].Trim();
-            string[] fields = account_summary.Split(',');
+            // Parse Trade line
+            string trade_line = lines[9].Trim();
+            string[] fields = trade_line.Split(',');
             if (fields.Length != 16)
             {
-                Console.WriteLine($"***Error*** Trade summary line #{line_index+1} must have 16 fields, not {fields.Length} fields");
+                Console.WriteLine($"***Error*** Trade line #{line_index+1} must have 16 fields, not {fields.Length} fields");
                 return false;
 
             }
-            string account_field = fields[1].Trim();
-            if (!RemoveQuotes(line_index+1, "Account", account_field, out string stripped_field))
+            string account_in_trade_line = fields[1].Trim();
+            if (!RemoveQuotes(line_index+1, "Account", account_in_trade_line, out string stripped_field))
                 return false;
+            if (account != account_in_trade_line)
+            {
+                Console.WriteLine($"***Error*** In Trade line #{line_index + 1}, account field: {account_in_trade_line} is not the same as line 9 of file: {account}");
+                return false;
+            }
 
             string trade_date_string = fields[2].Trim();
             if (!DateTime.TryParse(trade_date_string, out DateTime trade_dt))
             {
-                Console.WriteLine($"***Error*** Trade summary line #{line_index + 1} has invalid date field: {trade_date_string}");
+                Console.WriteLine($"***Error*** Trade line #{line_index + 1} has invalid date field: {trade_date_string}");
                 return false;
             }
+
+            string trade_id = fields[3].Trim();
+            if (trade_id.Length == 0)
+            {
+                Console.WriteLine($"***Error*** Trade line #{line_index + 1} has empty trade id field");
+                return false;
+            }
+
+            if (!RemoveQuotes(line_index + 1, "trade name", fields[4], out stripped_field))
+                return false;
 
             return true;
         }
@@ -324,7 +342,13 @@ static class Program
             return false;
         }
 
-        stripped_field = field[1..^2];    
+        stripped_field = field[1..^2];
+        if (stripped_field.Length == 0)
+        {
+            Console.WriteLine($"***Error*** In line {lineno}, field {field_name}, field is blank");
+            return false;
+        }
+
         return true;
     }
 }
