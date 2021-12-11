@@ -158,51 +158,173 @@ static class Program
         return true;
     }
 
+    //Portfolio
+    //Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
+    //UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
+    //UXXXXXXX,SPX APR2022 4000 P[SPXW  220429P04000000 100],CBOE,-4,USD,79.0655136,-31626.21,82.2374865,1268.79,0.00,No,OPT,309447.06
     static bool ProcessIBFile(string full_filename)
     {
-        using StreamReader sr = new(full_filename);
         Console.WriteLine("Processing IB file: " +  full_filename);
-
-        string? line1 = sr.ReadLine();
-        if (line1 == null)
+        string[] lines = File.ReadAllLines(full_filename);
+        if (lines.Length < 3)
         {
-            Console.WriteLine("***Error*** File empty");
+            Console.WriteLine("***Error*** IB File must contain at least 3 lines");
             return false;
-
         }
-        line1 = line1.Trim();
+
+        string line1 = lines[0].Trim();
         if (line1 != "Portfolio")
         {
             Console.WriteLine("***Error*** First line of IB file must be 'Portfolio'");
             return false;
         }
+
+        string ib_header1 = "Account,Financial Instrument Description,Exchange,Position,Currency,Market Price, Market Value,Average Price, Unrealized P & L,Realized P&L,Liquidate Last, Security Type,Delta Dollars";
+        line1 = lines[1].Trim();
+        if (line1 != ib_header1)
+        {
+            Console.WriteLine("***Error*** First line of IB file must start with: Account,Financial Instrument Description,Exchange,Position,...");
+            return false;
+        }
         return true;
     }
 
+    //ONE Detail Report
+    //
+    //Date/Time: 12/8/2021 08:28:42
+    //Filter: [Account] = 'IB1'
+    //Grouping: Account
+    //
+    //,Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc
+    //,,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission
+    //IB1
+    //,"IB1",12/3/2021,285,"244+1lp 2021-10-11 11:37", SPX, Open, Custom,10/11/2021 11:37 AM,,53,58,158973.30,46.46,13780.74,8.67
+    //,,"IB1",285,10/11/2021 11:37:32 AM,Buy,2,SPX   220319P04025000,3/18/2022,Put,SPX Mar22 4025 Put,SPX,113.92,2.28
+    //,,"IB1",285,10/11/2021 11:37:32 AM,Buy,4,SPX   220319P02725000,3/18/2022,Put,SPX Mar22 2725 Put,SPX,12.8,4.56
+
     static bool ProcessONEFile(string full_filename)
     {
-        using StreamReader sr = new(full_filename);
         Console.WriteLine("Processing ONE file: " + full_filename);
-
-        string? line1 = sr.ReadLine();
-        if (line1 == null)
+        string[] lines = File.ReadAllLines(full_filename);
+        if (lines.Length < 9)
         {
-            Console.WriteLine("***Error*** File empty");
+            Console.WriteLine("***Error*** ONE File must contain at least 9 lines");
             return false;
-
         }
-        line1 = line1.Trim();
+
+        string? line1 = lines[0].Trim();
         if (line1 != "ONE Detail Report")
         {
-            Console.WriteLine("***Error*** First line of IB file must be 'ONE Detail Report'");
+            Console.WriteLine($"***Error*** First line of ONE file must be 'ONE Detail Report', not: {line1}");
             return false;
         }
+
+        line1 = lines[1].Trim();
+        if (line1.Length != 0)
+        {
+            Console.WriteLine($"***Error*** Second line of ONE must be blank, not: {line1}");
+            return false;
+        }
+
+        line1 = lines[2].Trim();
+        if (!line1.StartsWith("Date/Time:"))
+        {
+            Console.WriteLine($"***Error*** Third line of ONE file must start with 'Date/Time:', not: {line1}");
+            return false;
+        }
+
+        line1 = lines[3].Trim();
+        if (!line1.StartsWith("Filter: [Account]"))
+        {
+            Console.WriteLine($"***Error*** Fourth line of ONE file must start with 'Filter: [Account]', not: {line1}");
+            return false;
+        }
+
+        line1 = lines[4].Trim();
+        if (!line1.StartsWith("Grouping: Account"))
+        {
+            Console.WriteLine($"***Error*** Fifth line of ONE file must start with 'Grouping: Account', not: {line1}");
+            return false;
+        }
+
+        line1 = lines[5].Trim();
+        if (line1.Length != 0)
+        {
+            Console.WriteLine($"***Error*** Sixth line of ONE must be blank, not: {line1}");
+            return false;
+        }
+
+        line1 = lines[6].Trim();
+        string one_header1 = ",Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc";
+        if (line1 != one_header1)
+        {
+            Console.WriteLine($"***Error*** Seventh line of ONE file must start with ',Account,Expiration,TradeId,TradeName,Underlying...', not: {line1}");
+            return false;
+        }
+
+        line1 = lines[7].Trim();
+        string one_header2 = ",,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission";
+        if (line1 != one_header2)
+        {
+            Console.WriteLine($"***Error*** Eighth line of ONE file must start with ',,Account,TradeId,Date,Transaction,Qty,Symbol...', not: {line1}");
+            return false;
+        }
+
+        string account = lines[8].Trim();
+        if (account.Length == 0)
+        {
+            Console.WriteLine($"***Error*** Ninth line of ONE must account name, not blank");
+            return false;
+        }
+
+        for (int line_index = 9; line_index < lines.Length; line_index++)
+        {
+            string account_summary = lines[9].Trim();
+            string[] fields = account_summary.Split(',');
+            if (fields.Length != 16)
+            {
+                Console.WriteLine($"***Error*** Trade summary line #{line_index+1} must have 16 fields, not {fields.Length} fields");
+                return false;
+
+            }
+            string account_field = fields[1].Trim();
+            if (!RemoveQuotes(line_index+1, "Account", account_field, out string stripped_field))
+                return false;
+
+            string trade_date_string = fields[2].Trim();
+            if (!DateTime.TryParse(trade_date_string, out DateTime trade_dt))
+            {
+                Console.WriteLine($"***Error*** Trade summary line #{line_index + 1} has invalid date field: {trade_date_string}");
+                return false;
+            }
+
+            return true;
+        }
+
 
         return true;
     }
 
     static bool CompareONEToIB()
     {
+        return true;
+    }
+
+    static bool RemoveQuotes(int lineno, string field_name, string field, out string stripped_field)
+    {
+        stripped_field = "";
+        if (field.Length == 0)
+        {
+            Console.WriteLine($"***Error*** In line {lineno}, field {field_name}, field is blank");
+            return false;
+        }
+
+        if (field.Length < 2 || field[0] != '"' || field[^1] != '"') {
+            Console.WriteLine($"***Error*** In line {lineno}, field {field_name}, field is not surrounded by quotes: {field}");
+            return false;
+        }
+
+        stripped_field = field[1..^2];    
         return true;
     }
 }
