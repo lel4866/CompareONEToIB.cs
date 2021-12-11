@@ -30,7 +30,7 @@ static class Program
         if (!rc)
             return -1;
 
-        rc = CompareONEToIB();
+        rc = CompareONEPositionsToIBPositions();
         if (!rc)
             return -1;
 
@@ -387,29 +387,28 @@ static class Program
     }
 
 
-        static bool CompareONEToIB()
+    static bool CompareONEPositionsToIBPositions()
     {
         return true;
     }
 
+    // remove quotes that surround a filed in a csv file...ok if quotes don't exist
     static bool RemoveQuotes(int lineno, string field_name, string field, out string stripped_field)
     {
-        stripped_field = "";
-        if (field.Length == 0)
-        {
-            Console.WriteLine($"***Error*** In line {lineno}, field {field_name}, field is blank");
-            return false;
-        }
-
-        if (field.Length < 2 || field[0] != '"' || field[^1] != '"') {
-            Console.WriteLine($"***Error*** In line {lineno}, field {field_name}, field is not surrounded by quotes: {field}");
-            return false;
-        }
-
-        stripped_field = field[1..^2];
+        stripped_field = field.Trim();
         if (stripped_field.Length == 0)
         {
             Console.WriteLine($"***Error*** In line {lineno}, field {field_name}, field is blank");
+            return false;
+        }
+
+        if (stripped_field.Length == 1 || stripped_field[0] != '"' || field[^1] != '"')
+                return true;
+
+        stripped_field = field[1..^2].Trim();
+        if (stripped_field.Length == 0)
+        {
+            Console.WriteLine($"***Error*** In line {lineno}, field {field_name}: after stripping quotes, field is blank");
             return false;
         }
 
