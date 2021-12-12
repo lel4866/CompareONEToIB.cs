@@ -7,7 +7,8 @@ using System.Text.RegularExpressions;
 enum OptionType
 {
     Put,
-    Call
+    Call,
+    Stock
 }
 
 enum TradeStatus
@@ -44,7 +45,7 @@ class ONEPosition
     public int quantity; // positive==buy, negative==sell
     public OptionType optionType;
     public int strike;
-    public DateOnly expiration;
+    public DateTime expiration;
     public float open_price;
     public float commission;
 }
@@ -55,6 +56,10 @@ class IBPosition
 {
     public string account = "";
     public int quantity;
+    public DateTime open_dt;
+    public OptionType optionType;
+    public int strike;
+    public DateOnly expiration;
     public float marketPrice;
     public float averagePrice; // average entry price
     public float unrealizedPnL;
@@ -338,7 +343,7 @@ static class Program
             return false;
         }
 
-        rc = ParseOptionSpec(fields[1], out OptionType type, out DateTime expiration, out int strike);
+        rc = ParseOptionSpec(fields[1], @".*\[(\w+) +(.+) \w+\]$", out OptionType type, out DateTime expiration, out int strike);
         if (!rc)
         {
             Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[1]}");
@@ -356,13 +361,13 @@ static class Program
     }
 
     // SPX APR2022 4300 P[SPXW  220429P04300000 100]
-    static bool ParseOptionSpec(string field, out OptionType type, out DateTime expiration, out int strike)
+    static bool ParseOptionSpec(string field, string regex, out OptionType type, out DateTime expiration, out int strike)
     {
         type = OptionType.Put;
         expiration = new();
         strike = 0;
 
-        MatchCollection mc = Regex.Matches(field, @".*\[(\w+) +(.*) \w+\]$");
+        MatchCollection mc = Regex.Matches(field, regex);
         if (mc.Count > 1)
             return false;
         Match match0 = mc[0];
@@ -512,7 +517,7 @@ static class Program
                     return false;
                 }
 
-                ONEPosition? position = ParseONEPositionLine(line_index, fields);
+                ONEPosition? position = ParseONEPositionLine(line_index, fields, curOneTrade.trade_id);
                 if (position == null)
                     return false;
                 curOneTrade.positions.Add(position);
@@ -605,8 +610,9 @@ static class Program
         return oneTrade;
     }
 
+    //,,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission
     //,,"IB1",285,10/11/2021 11:37:32 AM,Buy,2,SPX   220319P04025000,3/18/2022,Put,SPX Mar22 4025 Put,SPX,113.92,2.28
-    static ONEPosition? ParseONEPositionLine(int line_index, List<string> fields)
+    static ONEPosition? ParseONEPositionLine(int line_index, List<string> fields, string trade_id)
     {
         if (fields.Count != 14)
         {
@@ -614,7 +620,69 @@ static class Program
             return null;
         }
 
+        if (fields[2] != one_account)
+        {
+            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} has account: {fields[2]} that is different from trade account: {one_account}");
+            return null;
+        }
+
+
+        if (fields[3] != trade_id)
+        {
+            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} has trade id: {fields[3]} that is different from trade id in trade line: {trade_id}");
+            return null;
+        }
+
         ONEPosition position = new();
+        position.account = one_account;
+        position.trade_id = trade_id;
+
+        if (!DateTime.TryParse(fields[4], out position.open_dt))
+        {
+            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} has invalid open date field: {fields[4]}");
+            return null;
+        }
+
+        int quantity_sign = 0;
+        if (fields[5] == "Buy")
+            quantity_sign = 1;
+        else if (fields[5] == "Sell")
+            quantity_sign = -1;
+        else
+        {
+            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} has invalid transaction type (must be Buy or Sell): {fields[5]}");
+            return null;
+        }
+
+        if (!int.TryParse(fields[6], out position.quantity))
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid quantity field: {fields[6]}");
+            return null;
+        }
+        position.quantity *= quantity_sign;
+
+        if (fields[9] == "Put" || fields[9] == "Call")
+        {
+            bool rc = ParseOptionSpec(fields[7], @"(\w+) +(.+)$", out position.optionType, out position.expiration, out position.strike);
+            if (!rc)
+                return null;
+        }
+        else if (fields[9] == "Stock")
+        {
+            position.optionType = OptionType.Stock;
+        }
+        else
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid type field (Must be Put, Call, or Stock): {fields[9]}");
+            return null;
+        }
+
+        if (!float.TryParse(fields[12], out position.open_price))
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid price field: {fields[12]}");
+            return null;
+        }
+
         return position;
     }
 
