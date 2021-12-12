@@ -82,10 +82,9 @@ static class Program
         string line1 = line[..i];
         string line2 = line[(i+1)..];
         string line3 = line1 + line2;
-#endif
         string line = "\"ab\"\"c\"";
         bool rc1 = parseCVSLine(line, out List<string> fields);
-
+#endif
         var stopWatch = new Stopwatch();
         stopWatch.Start();
 
@@ -251,7 +250,7 @@ static class Program
             return false;
         }
 
-        string ib_header1 = "Account,Financial Instrument Description,Exchange,Position,Currency,Market Price, Market Value,Average Price, Unrealized P & L,Realized P&L,Liquidate Last, Security Type,Delta Dollars";
+        string ib_header1 = "Account,Financial Instrument Description,Exchange,Position,Currency,Market Price,Market Value,Average Price,Unrealized P&L,Realized P&L,Liquidate Last,Security Type,Delta Dollars";
         line1 = lines[1].Trim();
         if (line1 != ib_header1)
         {
@@ -264,6 +263,11 @@ static class Program
             bool rc = parseCVSLine(lines[line_index], out List<string> fields);
             if (!rc)
                 return false;
+
+            // blank line terminates list of positions. Next line must be "Cash Balances"
+            if (fields.Count == 0)
+                break;
+
             rc = ParseIBPositionLine(line_index, fields);
             if (!rc)
                 return false;
@@ -276,7 +280,7 @@ static class Program
     //UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
     static bool ParseIBPositionLine(int line_index, List<string> fields)
     {
-        if (fields.Count != 12)
+        if (fields.Count != 13)
         {
             Console.WriteLine($"***Error*** IB Position line #{line_index + 1} must have 12 fields, not {fields.Count} fields");
             return false;
@@ -539,7 +543,7 @@ static class Program
                         state = 3;
                     break;
 
-                case 3: // prior char was quote (that didn't start field)...if this is quote, it's a double quote, else better be delimiter to end field
+                case 3: // looking for end of field that started with quote; prior char was quote (that didn't start field)...if this is quote, it's a double quote, else better be delimiter to end field
                     if (c == '"')
                     {
                         // double quote...throw away first one
@@ -551,7 +555,8 @@ static class Program
                     {
                         if (c != delimiter)
                             return false; // malformed field
-                        fields.Add(line[start..^1]); state = 0;
+                        fields.Add(line.Substring(start, i - start - 1));
+                        state = 0;
                     }
                     break;
 
@@ -564,7 +569,10 @@ static class Program
         // process last field
         switch (state)
         {
-            // can't be state 0
+            case 0: // must be blank line
+                Debug.Assert(line.Length == 0);
+                break;
+
             case 1: // field started with non-quote...standard end
                 fields.Add(line[start..]);
                 break;
