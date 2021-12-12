@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 
 enum OptionType
 {
@@ -19,46 +20,46 @@ enum TradeSTatus
 //,"IB1",12/3/2021,285,"244+1lp 2021-10-11 11:37", SPX, Open, Custom,10/11/2021 11:37 AM,,53,58,158973.30,46.46,13780.74,8.67
 class ONETrade
 {
-    string account = "";
-    DateOnly expiration;
-    string trade_id = "";
-    string trade_name = "";
-    string underlying = "";
-    TradeSTatus status;
-    DateTime open_dt;
-    DateTime close_dt;
-    int dte;
-    int dit;
-    float total_commission;
-    float pnl;
-    List<ONEPosition> positions = new();
+    public string account = "";
+    public DateOnly expiration;
+    public string trade_id = "";
+    public string trade_name = "";
+    public string underlying = "";
+    public TradeSTatus status;
+    public DateTime open_dt;
+    public DateTime close_dt;
+    public int dte;
+    public int dit;
+    public float total_commission;
+    public float pnl;
+    public List<ONEPosition> positions = new();
 }
 
 //,,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission
 //,,"IB1",285,10/11/2021 11:37:32 AM,Buy,2,SPX   220319P04025000,3/18/2022,Put,SPX Mar22 4025 Put,SPX,113.92,2.28
 class ONEPosition
 {
-    string account = "";
-    string trade_id = "";
-    DateTime open_dt;
-    int quantity; // positive==buy, negative==sell
-    OptionType optionType;
-    int strike;
-    DateOnly expiration;
-    float open_price;
-    float commission;
+    public string account = "";
+    public string trade_id = "";
+    public DateTime open_dt;
+    public int quantity; // positive==buy, negative==sell
+    public OptionType optionType;
+    public int strike;
+    public DateOnly expiration;
+    public float open_price;
+    public float commission;
 }
 
 //Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
 //UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
 class IBPosition
 {
-    string account = "";
-    int quantity;
-    float marketPrice;
-    float averagePrice; // average entry price
-    float unrealizedPnL;
-    float realizedPnL;
+    public string account = "";
+    public int quantity;
+    public float marketPrice;
+    public float averagePrice; // average entry price
+    public float unrealizedPnL;
+    public float realizedPnL;
 }
 
 static class Program
@@ -260,7 +261,7 @@ static class Program
 
         for (int line_index = 2; line_index < lines.Length; line_index++)
         {
-            bool rc = parseCVSLine(lines[line_index], out List<string> fields);
+            bool rc = parseCSVLine(lines[line_index], out List<string> fields);
             if (!rc)
                 return false;
 
@@ -293,13 +294,84 @@ static class Program
             return false;
         }
 
-        // ignore positions whic are not CBOE SPX Options
-        if (fields[2].Trim() != "CBOE" || fields[11].Trim() != "OPT")
+        // ignore positions which are not CBOE SPX Options
+        if (fields[2].Trim() != "CBOE" || fields[11].Trim() != "OPT" || !fields[1].StartsWith("SPX"))
         {
             Console.WriteLine($"Ignoring line #{line_index + 1} in IB file: not an SPX option");
             return true;
         }
 
+        IBPosition ibPosition = new();
+        ibPosition.account = ib_account;
+
+        bool rc = int.TryParse(fields[3], out ibPosition.quantity);
+        if (!rc)
+        {
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Position: {fields[3]}");
+            return false;
+        }
+
+        rc = float.TryParse(fields[5], out ibPosition.marketPrice);
+        if (!rc)
+        {
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Market Price: {fields[5]}");
+            return false;
+        }
+
+        rc = float.TryParse(fields[7], out ibPosition.averagePrice);
+        if (!rc)
+        {
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Average Price: {fields[7]}");
+            return false;
+        }
+
+        rc = float.TryParse(fields[8], out ibPosition.unrealizedPnL);
+        if (!rc)
+        {
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Unrealized P&L: {fields[8]}");
+            return false;
+        }
+
+        rc = float.TryParse(fields[9], out ibPosition.realizedPnL);
+        if (!rc)
+        {
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Realized P&L: {fields[9]}");
+            return false;
+        }
+
+        rc = ParseOptionSpec(fields[1], out OptionType type, out DateTime expiration, out int strike);
+        if (!rc)
+        {
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[1]}");
+            return false;
+        }
+
+        ibPositions.Add((expiration, strike), ibPosition.quantity);
+        return true;
+    }
+
+    // SPX APR2022 4300 P[SPXW  220429P04300000 100]
+    static bool ParseOptionSpec(string field, out OptionType type, out DateTime expiration, out int strike)
+    {
+        type = OptionType.Put;
+        expiration = new();
+        strike = 0;
+
+        MatchCollection mc = Regex.Matches(field, @".*\[(\w+) +(.*) \w+\]$");
+        if (mc.Count > 1)
+            return false;
+        Match match0 = mc[0];
+        if (match0.Groups.Count != 3)
+            return false;
+
+        string option_class = match0.Groups[1].Value;
+        string option_code = match0.Groups[2].Value;
+        int year = int.Parse(option_code[0..2]) + 2000;
+        int month = int.Parse(option_code[2..4]);
+        int day = int.Parse(option_code[4..6]);
+        expiration = new(year, month, day);
+        type = (option_code[6] == 'P') ? OptionType.Put : OptionType.Call;
+        strike = int.Parse(option_code[7..12]);
         return true;
     }
 
@@ -406,7 +478,7 @@ static class Program
                 existing_trade = false;
                 continue;
             }
-            bool rc = parseCVSLine(line, out List<string> fields);
+            bool rc = parseCSVLine(line, out List<string> fields);
 
             if (fields.Count < 14)
             {
@@ -422,10 +494,6 @@ static class Program
                 }
 
                 // start new trade
-                if (line_index == 59)
-                {
-                    int aa = 1;
-                }
                 rc = ParseONETradeLine(line_index, fields);
                 if (!rc)
                     return false;
@@ -501,7 +569,7 @@ static class Program
     }
 
     const char delimiter = ',';
-    static bool parseCVSLine(string line, out List<string> fields)
+    static bool parseCSVLine(string line, out List<string> fields)
     {
         fields = new();
         int state = 0;
@@ -532,8 +600,8 @@ static class Program
                 case 1: // looking for end of field that didn't start with quote (interior quotes ignored)
                     if (c == delimiter)
                     {
-                        string field = line.Substring(start, i + 1 - start).Trim(); // debug
-                        fields.Add(line.Substring(start, i + 1 - start).Trim());
+                        //string field = line.Substring(start, i + 1 - start).Trim(); // debug
+                        fields.Add(line.Substring(start, i - start).Trim());
                         state = 0;
                     }
                     break;
