@@ -3,6 +3,64 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
+enum OptionType
+{
+    Put,
+    Call
+}
+
+enum TradeSTatus
+{
+    Open,
+    Closed
+}
+
+//,Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc
+//,"IB1",12/3/2021,285,"244+1lp 2021-10-11 11:37", SPX, Open, Custom,10/11/2021 11:37 AM,,53,58,158973.30,46.46,13780.74,8.67
+class ONETrade
+{
+    string account = "";
+    DateOnly expiration;
+    string trade_id = "";
+    string trade_name = "";
+    string underlying = "";
+    TradeSTatus status;
+    DateTime open_dt;
+    DateTime close_dt;
+    int dte;
+    int dit;
+    float total_commission;
+    float pnl;
+    List<ONEPosition> positions = new();
+}
+
+//,,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission
+//,,"IB1",285,10/11/2021 11:37:32 AM,Buy,2,SPX   220319P04025000,3/18/2022,Put,SPX Mar22 4025 Put,SPX,113.92,2.28
+class ONEPosition
+{
+    string account = "";
+    string trade_id = "";
+    DateTime open_dt;
+    int quantity; // positive==buy, negative==sell
+    OptionType optionType;
+    int strike;
+    DateOnly expiration;
+    float open_price;
+    float commission;
+}
+
+//Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
+//UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
+class IBPosition
+{
+    string account = "";
+    int quantity;
+    float marketPrice;
+    float averagePrice; // average entry price
+    float unrealizedPnL;
+    float realizedPnL;
+}
+
 static class Program
 {
     public const string version = "0.0.1";
@@ -13,8 +71,21 @@ static class Program
     static string one_account = "";
     static string ib_account = "";
 
+    static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
+    static Dictionary<(DateTime, int), int> ibPositions = new(); // key is (Expiration, Strike); value is quantity
+
     static int Main(string[] args)
     {
+#if false
+        string line = "\"ab\"\"c\"";
+        int i = 4;
+        string line1 = line[..i];
+        string line2 = line[(i+1)..];
+        string line3 = line1 + line2;
+#endif
+        string line = "\"ab\"\"c\"";
+        bool rc1 = parseCVSLine(line, out List<string> fields);
+
         var stopWatch = new Stopwatch();
         stopWatch.Start();
 
@@ -163,7 +234,6 @@ static class Program
     //Portfolio
     //Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
     //UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
-    //UXXXXXXX,SPX APR2022 4000 P[SPXW  220429P04000000 100],CBOE,-4,USD,79.0655136,-31626.21,82.2374865,1268.79,0.00,No,OPT,309447.06
     static bool ProcessIBFile(string full_filename)
     {
         Console.WriteLine("Processing IB file: " +  full_filename);
@@ -191,13 +261,39 @@ static class Program
 
         for (int line_index = 2; line_index < lines.Length; line_index++)
         {
-            string[] fields = lines[line_index].Split(',');
-            ib_account = fields[0].Trim();
-            if (ib_account.Length == 0)
-            {
-                Console.WriteLine($"***Error*** Account id (first field) in IB line #{line_index + 1} is blank");
+            bool rc = parseCVSLine(lines[line_index], out List<string> fields);
+            if (!rc)
                 return false;
-            }
+            rc = ParseIBPositionLine(line_index, fields);
+            if (!rc)
+                return false;
+        }
+
+        return true;
+    }
+
+    //Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
+    //UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
+    static bool ParseIBPositionLine(int line_index, List<string> fields)
+    {
+        if (fields.Count != 12)
+        {
+            Console.WriteLine($"***Error*** IB Position line #{line_index + 1} must have 12 fields, not {fields.Count} fields");
+            return false;
+        }
+
+        ib_account = fields[0].Trim();
+        if (ib_account.Length == 0)
+        {
+            Console.WriteLine($"***Error*** Account id (first field) in IB line #{line_index + 1} is blank");
+            return false;
+        }
+
+        // ignore positions whic are not CBOE SPX Options
+        if (fields[2].Trim() != "CBOE" || fields[11].Trim() != "OPT")
+        {
+            Console.WriteLine($"Ignoring line #{line_index + 1} in IB file: not an SPX option");
+            return true;
         }
 
         return true;
@@ -299,14 +395,21 @@ static class Program
             // fields[0] must be blank;
             // if fields[1] is blank, this is a position line, otherwise it is a trade line
             string line = lines[line_index].Trim();
-            string[] fields = line.Split(',');
-            if (fields.Length < 14)
+
+            // trades (except for the first one) are separated by blanks
+            if (line.Length == 0)
             {
-                Console.WriteLine($"***Error*** ONE Trade/Position line #{line_index + 1} must have at least 14 fields, not {fields.Length} fields");
+                existing_trade = false;
+                continue;
+            }
+            bool rc = parseCVSLine(line, out List<string> fields);
+
+            if (fields.Count < 14)
+            {
+                Console.WriteLine($"***Error*** ONE Trade/Position line #{line_index + 1} must have at least 14 fields, not {fields.Count} fields");
                 return false;
             }
 
-            bool rc;
             string account1 = fields[1].Trim();
             if (account1.Length != 0) {
                 if (existing_trade)
@@ -315,6 +418,10 @@ static class Program
                 }
 
                 // start new trade
+                if (line_index == 59)
+                {
+                    int aa = 1;
+                }
                 rc = ParseONETradeLine(line_index, fields);
                 if (!rc)
                     return false;
@@ -339,16 +446,15 @@ static class Program
         return true;
     }
 
-    static bool ParseONETradeLine(int line_index, string[] fields) {
-        if (fields.Length != 16)
+    //,"IB1",12/3/2021,285,"244+1lp 2021-10-11 11:37", SPX, Open, Custom,10/11/2021 11:37 AM,,53,58,158973.30,46.46,13780.74,8.67
+    static bool ParseONETradeLine(int line_index, List<string> fields) {
+        if (fields.Count != 16)
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} must have 16 fields, not {fields.Length} fields");
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} must have 16 fields, not {fields.Count} fields");
             return false;
         }
 
-        if (!RemoveQuotes(line_index+1, "Account", fields[1].Trim(), out string account1)) 
-                return false;
-
+        string account1 = fields[1];
         if (one_account != account1)
         {
             Console.WriteLine($"***Error*** In ONE Trade line #{line_index + 1}, account field: {account1} is not the same as line 9 of file: {one_account}");
@@ -369,17 +475,15 @@ static class Program
             return false;
         }
 
-        if (!RemoveQuotes(line_index + 1, "trade name", fields[4], out string trade_name))
-            return false;
-
         return true;
     }
 
-    static bool ParseONEPositionLine(int line_index, string[] fields)
+    //,,"IB1",285,10/11/2021 11:37:32 AM,Buy,2,SPX   220319P04025000,3/18/2022,Put,SPX Mar22 4025 Put,SPX,113.92,2.28
+    static bool ParseONEPositionLine(int line_index, List<string> fields)
     {
-        if (fields.Length != 14)
+        if (fields.Count != 14)
         {
-            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} must have 14 fields, not {fields.Length} fields");
+            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} must have 14 fields, not {fields.Count} fields");
             return false;
         }
 
@@ -392,24 +496,90 @@ static class Program
         return true;
     }
 
-    // remove quotes that surround a filed in a csv file...ok if quotes don't exist
-    static bool RemoveQuotes(int lineno, string field_name, string field, out string stripped_field)
+    const char delimiter = ',';
+    static bool parseCVSLine(string line, out List<string> fields)
     {
-        stripped_field = field.Trim();
-        if (stripped_field.Length == 0)
+        fields = new();
+        int state = 0;
+        int start = 0;
+        char c;
+        for (int i=0; i<line.Length; i++)
         {
-            Console.WriteLine($"***Error*** In line {lineno}, field {field_name}, field is blank");
-            return false;
+            c = line[i];
+            switch (state)
+            {
+                case 0: // start of field; quote, delimiter, or other
+                    switch (c)
+                    {
+                        case delimiter: // first char is delimiter...field is empty
+                            fields.Add("");
+                            break;
+                        case '"': // field starts with quote
+                            start = i + 1;
+                            state = 2;
+                            break;
+                        default: // field starts with non-quote
+                            start = i;
+                            state = 1;
+                            break;
+                    }
+                    break;
+
+                case 1: // looking for end of field that didn't start with quote (interior quotes ignored)
+                    if (c == delimiter)
+                    {
+                        string field = line.Substring(start, i + 1 - start).Trim(); // debug
+                        fields.Add(line.Substring(start, i + 1 - start).Trim());
+                        state = 0;
+                    }
+                    break;
+
+                case 2: // looking for end of field that started with quote; if this is quote, could be start of double quote or end of field
+                    if (c == '"')
+                        state = 3;
+                    break;
+
+                case 3: // prior char was quote (that didn't start field)...if this is quote, it's a double quote, else better be delimiter to end field
+                    if (c == '"')
+                    {
+                        // double quote...throw away first one
+                        line = line[..i] + line[(i+1)..];
+                        i--;
+                        state = 2;
+                    }
+                    else
+                    {
+                        if (c != delimiter)
+                            return false; // malformed field
+                        fields.Add(line[start..^1]); state = 0;
+                    }
+                    break;
+
+                default:
+                    Debug.Assert(false);
+                    break;
+            }
+
         }
-
-        if (stripped_field.Length == 1 || stripped_field[0] != '"' || field[^1] != '"')
-                return true;
-
-        stripped_field = field[1..^2].Trim();
-        if (stripped_field.Length == 0)
+        // process last field
+        switch (state)
         {
-            Console.WriteLine($"***Error*** In line {lineno}, field {field_name}: after stripping quotes, field is blank");
-            return false;
+            // can't be state 0
+            case 1: // field started with non-quote...standard end
+                fields.Add(line[start..]);
+                break;
+
+            case 2: // field started with quote, but didn't end with quote...error
+                return false;
+
+            case 3: // field ended with quote
+                string dbg = line[start..^1];
+                fields.Add(line[start..^1]);
+                break;
+
+            default:
+                Debug.Assert(false);
+                return false;
         }
 
         return true;
