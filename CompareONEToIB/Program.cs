@@ -10,7 +10,7 @@ enum OptionType
     Call
 }
 
-enum TradeSTatus
+enum TradeStatus
 {
     Open,
     Closed
@@ -21,11 +21,10 @@ enum TradeSTatus
 class ONETrade
 {
     public string account = "";
-    public DateOnly expiration;
     public string trade_id = "";
     public string trade_name = "";
     public string underlying = "";
-    public TradeSTatus status;
+    public TradeStatus status;
     public DateTime open_dt;
     public DateTime close_dt;
     public int dte;
@@ -344,8 +343,14 @@ static class Program
         {
             Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[1]}");
             return false;
-        }
+        } 
 
+        var key = (expiration, strike);
+        if (ibPositions.ContainsKey(key))
+        {
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({expiration.Date},{strike})");
+            return false;
+        }
         ibPositions.Add((expiration, strike), ibPosition.quantity);
         return true;
     }
@@ -465,7 +470,7 @@ static class Program
         }
 
         // parse Trade and Position lines
-        bool existing_trade = false;
+        ONETrade? curOneTrade = null;
         for (int line_index = 9; line_index < lines.Length; line_index++)
         {
             // fields[0] must be blank;
@@ -475,7 +480,7 @@ static class Program
             // trades (except for the first one) are separated by blanks
             if (line.Length == 0)
             {
-                existing_trade = false;
+                curOneTrade = null;
                 continue;
             }
             bool rc = parseCSVLine(line, out List<string> fields);
@@ -488,29 +493,29 @@ static class Program
 
             string account1 = fields[1].Trim();
             if (account1.Length != 0) {
-                if (existing_trade)
+                if (curOneTrade != null)
                 {
                     // do whatever when we've parsed all position lines for trade
                 }
 
                 // start new trade
-                rc = ParseONETradeLine(line_index, fields);
-                if (!rc)
+                curOneTrade = ParseONETradeLine(line_index, fields);
+                if (curOneTrade == null)
                     return false;
-                existing_trade = true;
                 continue;
             }
             else
             {
-                if (!existing_trade)
+                if (curOneTrade == null)
                 {
                     Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} comes before Trade line.");
                     return false;
                 }
 
-                rc = ParseONEPositionLine(line_index, fields);
-                if (!rc)
+                ONEPosition? position = ParseONEPositionLine(line_index, fields);
+                if (position == null)
                     return false;
+                curOneTrade.positions.Add(position);
                 continue;
             }
         }
@@ -518,50 +523,100 @@ static class Program
         return true;
     }
 
+    // ",Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc"
     //,"IB1",12/3/2021,285,"244+1lp 2021-10-11 11:37", SPX, Open, Custom,10/11/2021 11:37 AM,,53,58,158973.30,46.46,13780.74,8.67
-    static bool ParseONETradeLine(int line_index, List<string> fields) {
+    // we don't parse Margin,Comms,PnL,PnLperc
+    static ONETrade? ParseONETradeLine(int line_index, List<string> fields) {
         if (fields.Count != 16)
         {
             Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} must have 16 fields, not {fields.Count} fields");
-            return false;
+            return null;
         }
 
-        string account1 = fields[1];
-        if (one_account != account1)
+        ONETrade oneTrade = new();
+
+        oneTrade.account = fields[1];
+        if (one_account != oneTrade.account)
         {
-            Console.WriteLine($"***Error*** In ONE Trade line #{line_index + 1}, account field: {account1} is not the same as line 9 of file: {one_account}");
-            return false;
+            Console.WriteLine($"***Error*** In ONE Trade line #{line_index + 1}, account field: {oneTrade.account} is not the same as line 9 of file: {one_account}");
+            return null;
         }
 
-        string trade_date_string = fields[2].Trim();
-        if (!DateTime.TryParse(trade_date_string, out DateTime trade_dt))
+        if (!DateTime.TryParse(fields[2], out DateTime dummy_dt))
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid date field: {trade_date_string}");
-            return false;
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid date field: {fields[2]}");
+            return null;
         }
 
-        string trade_id = fields[3].Trim();
-        if (trade_id.Length == 0)
+        oneTrade.trade_id = fields[3];
+        if (oneTrade.trade_id.Length == 0)
         {
             Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has empty trade id field");
-            return false;
+            return null;
         }
 
-        return true;
+        oneTrade.trade_name = fields[4];
+        oneTrade.underlying = fields[5];
+
+        if (fields[6] == "Open")
+            oneTrade.status = TradeStatus.Open;
+        else if (fields[6] == "Closed")
+            oneTrade.status = TradeStatus.Closed;
+        else
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid trade status field: {fields[6]}");
+            return null;
+        }
+
+        if (!DateTime.TryParse(fields[8], out oneTrade.open_dt))
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid date field: {fields[8]}");
+            return null;
+        }
+
+        if (oneTrade.status == TradeStatus.Closed)
+        {
+            if (!DateTime.TryParse(fields[9], out oneTrade.close_dt))
+            {
+                Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid date field: {fields[9]}");
+                return null;
+            }
+        }
+
+        if (!int.TryParse(fields[10], out oneTrade.dte))
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid dte field: {fields[10]}");
+            return null;
+        }
+
+        if (!int.TryParse(fields[11], out oneTrade.dit))
+        {
+            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid dit field: {fields[11]}");
+            return null;
+        }
+
+        if (oneTrades.ContainsKey(oneTrade.trade_id))
+        {
+            Console.WriteLine($"***Error*** in #{line_index + 1} in ONE file: duplicate trade id: {oneTrade.trade_id}");
+            return null;
+        }
+        oneTrades.Add(oneTrade.trade_id, oneTrade);
+
+        return oneTrade;
     }
 
     //,,"IB1",285,10/11/2021 11:37:32 AM,Buy,2,SPX   220319P04025000,3/18/2022,Put,SPX Mar22 4025 Put,SPX,113.92,2.28
-    static bool ParseONEPositionLine(int line_index, List<string> fields)
+    static ONEPosition? ParseONEPositionLine(int line_index, List<string> fields)
     {
         if (fields.Count != 14)
         {
             Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} must have 14 fields, not {fields.Count} fields");
-            return false;
+            return null;
         }
 
-        return true;
+        ONEPosition position = new();
+        return position;
     }
-
 
     static bool CompareONEPositionsToIBPositions()
     {
@@ -600,7 +655,6 @@ static class Program
                 case 1: // looking for end of field that didn't start with quote (interior quotes ignored)
                     if (c == delimiter)
                     {
-                        //string field = line.Substring(start, i + 1 - start).Trim(); // debug
                         fields.Add(line.Substring(start, i - start).Trim());
                         state = 0;
                     }
@@ -623,7 +677,7 @@ static class Program
                     {
                         if (c != delimiter)
                             return false; // malformed field
-                        fields.Add(line.Substring(start, i - start - 1));
+                        fields.Add(line.Substring(start, i - start - 1).Trim());
                         state = 0;
                     }
                     break;
@@ -642,7 +696,7 @@ static class Program
                 break;
 
             case 1: // field started with non-quote...standard end
-                fields.Add(line[start..]);
+                fields.Add(line[start..].Trim());
                 break;
 
             case 2: // field started with quote, but didn't end with quote...error
@@ -650,7 +704,7 @@ static class Program
 
             case 3: // field ended with quote
                 string dbg = line[start..^1];
-                fields.Add(line[start..^1]);
+                fields.Add(line[start..^1].Trim());
                 break;
 
             default:
