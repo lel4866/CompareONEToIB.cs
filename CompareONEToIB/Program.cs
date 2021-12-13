@@ -41,13 +41,12 @@ class ONEPosition
 {
     public string account = "";
     public string trade_id = "";
-    public DateTime open_dt;
-    public int quantity; // positive==buy, negative==sell
     public OptionType optionType;
+    public DateTime open_dt;
     public int strike;
-    public DateTime expiration;
+    public DateOnly expiration;
+    public int quantity; // positive==buy, negative==sell
     public float open_price;
-    public float commission;
 }
 
 //Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
@@ -55,15 +54,19 @@ class ONEPosition
 class IBPosition
 {
     public string account = "";
-    public int quantity;
-    public DateTime open_dt;
     public OptionType optionType;
+    public DateTime open_dt;
     public int strike;
     public DateOnly expiration;
-    public float marketPrice;
+    public int quantity;
     public float averagePrice; // average entry price
+    public float marketPrice; // current market price
     public float unrealizedPnL;
     public float realizedPnL;
+
+    // used only during reconciliation with ONE positions
+    int accounted_for_quantity = 0;
+    List<ONEPosition> onePositions = new();
 }
 
 static class Program
@@ -77,7 +80,7 @@ static class Program
     static string ib_account = "";
 
     static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
-    static Dictionary<(DateTime, int), int> ibPositions = new(); // key is (Expiration, Strike); value is quantity
+    static Dictionary<(DateOnly, int), int> ibPositions = new(); // key is (Expiration, Strike); value is quantity
 
     static int Main(string[] args)
     {
@@ -343,7 +346,7 @@ static class Program
             return false;
         }
 
-        rc = ParseOptionSpec(fields[1], @".*\[(\w+) +(.+) \w+\]$", out OptionType type, out DateTime expiration, out int strike);
+        rc = ParseOptionSpec(fields[1], @".*\[(\w+) +(.+) \w+\]$", out OptionType type, out DateOnly expiration, out int strike);
         if (!rc)
         {
             Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[1]}");
@@ -353,7 +356,7 @@ static class Program
         var key = (expiration, strike);
         if (ibPositions.ContainsKey(key))
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({expiration.Date},{strike})");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({expiration},{strike})");
             return false;
         }
         ibPositions.Add((expiration, strike), ibPosition.quantity);
@@ -361,7 +364,7 @@ static class Program
     }
 
     // SPX APR2022 4300 P[SPXW  220429P04300000 100]
-    static bool ParseOptionSpec(string field, string regex, out OptionType type, out DateTime expiration, out int strike)
+    static bool ParseOptionSpec(string field, string regex, out OptionType type, out DateOnly expiration, out int strike)
     {
         type = OptionType.Put;
         expiration = new();
@@ -688,6 +691,23 @@ static class Program
 
     static bool CompareONEPositionsToIBPositions()
     {
+        // go through each ONE trade and then each position in ONE trade and find it's associated IB Position
+        foreach (ONETrade one_trade in oneTrades.Values)
+        {
+            foreach (ONEPosition one_position in one_trade.positions)
+            {
+                if (!ibPositions.TryGetValue((one_position.expiration, one_position.strike), out int value))
+                {
+                    Console.WriteLine($"***Error*** IB position does not exist for ONE trade {one_position.trade_id}, expiration: {one_position.expiration}, strike: {one_position.expiration}, quantity: {one_position.quantity}");
+                    // to do: write to log, reconciliation trade file
+                    continue;
+                }
+
+                // save one position reference in ib position
+
+                // add one_position quantity to accounted_for_quantity...this will be checked later
+            }
+        }
         return true;
     }
 
