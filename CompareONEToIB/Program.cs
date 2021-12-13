@@ -32,7 +32,7 @@ class ONETrade
     public int dit;
     public float total_commission;
     public float pnl;
-    public List<ONEPosition> positions = new();
+    public Dictionary<(OptionType, DateOnly, int), int> positions = new(); // these are consolidated option positions: (OptionType, Expiration, Strike);
 }
 
 //,,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission
@@ -65,7 +65,7 @@ class IBPosition
 
     // used only during reconciliation with ONE positions
     public int accounted_for_quantity = 0;
-    public List<ONEPosition> onePositions = new();
+    public List<string> oneTrades = new();
 }
 
 static class Program
@@ -78,7 +78,7 @@ static class Program
     static string one_account = "";
 
     static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
-    static Dictionary<(DateOnly, int), IBPosition> ibPositions = new(); // key is (Expiration, Strike); value is quantity
+    static Dictionary<(OptionType, DateOnly, int), IBPosition> ibPositions = new(); // key is (OptionType, Expiration, Strike); value is quantity
 
     static int Main(string[] args)
     {
@@ -336,13 +336,13 @@ static class Program
             return false;
         } 
 
-        var key = (ibPosition.expiration, ibPosition.strike);
+        var key = (ibPosition.optionType, ibPosition.expiration, ibPosition.strike);
         if (ibPositions.ContainsKey(key))
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({ibPosition.expiration},{ibPosition.strike})");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({ibPosition.optionType} {ibPosition.expiration},{ibPosition.strike})");
             return false;
         }
-        ibPositions.Add((ibPosition.expiration, ibPosition.strike), ibPosition);
+        ibPositions.Add((ibPosition.optionType, ibPosition.expiration, ibPosition.strike), ibPosition);
         return true;
     }
 
@@ -506,8 +506,20 @@ static class Program
                 ONEPosition? position = ParseONEPositionLine(line_index, fields, curOneTrade.trade_id);
                 if (position == null)
                     return false;
-                curOneTrade.positions.Add(position);
-                continue;
+
+                // now add option position to consolidated positions dictionary; remove existing position if quantity now 0
+                var key = (position.optionType, position.expiration, position.strike);
+                if (curOneTrade.positions.ContainsKey(key))
+                {
+                    curOneTrade.positions[key] += position.quantity;
+                    if (curOneTrade.positions[key] == 0)
+                        curOneTrade.positions.Remove(key);
+                }
+                else
+                {
+                    Debug.Assert(position.quantity > 0);
+                    curOneTrade.positions.Add(key, position.quantity);
+                }
             }
         }
 
@@ -671,6 +683,8 @@ static class Program
         else if (fields[9] == "Stock")
         {
             position.optionType = OptionType.Stock;
+            position.expiration = new DateOnly(1, 1, 1);
+            position.strike = 0;
         }
         else
         {
@@ -696,27 +710,28 @@ static class Program
         foreach (ONETrade one_trade in oneTrades.Values)
         {
             int position_index = -1;
-            foreach (ONEPosition one_position in one_trade.positions)
+            foreach (((OptionType type, DateOnly expiration, int strike), int one_quantity) in one_trade.positions)
             {
                 position_index++;
-                if (!ibPositions.TryGetValue((one_position.expiration, one_position.strike), out IBPosition ib_position))
+                if (!ibPositions.TryGetValue((type, expiration, strike), out IBPosition ib_position))
                 {
-                    if (one_position.optionType == OptionType.Stock)
+                    int quantity = one_trade.positions[(type, expiration, strike)];
+                    if (quantity == 0)
                     {
-                        Console.WriteLine($"***Error*** IB position does not exist for ONE stock trade {one_position.trade_id}, quantity: {one_position.quantity}");
+                        int xxx = 1;
                     }
+                    if (type == OptionType.Stock)
+                        Console.WriteLine($"***Error*** IB stock position does not exist for ONE trade {one_trade.trade_id}, quantity: {quantity}");
                     else
-                    {
-                        Console.WriteLine($"***Error*** IB position does not exist for ONE option trade {one_position.trade_id}, expiration: {one_position.expiration}, strike: {one_position.strike}, quantity: {one_position.quantity}");
-                    }
+                        Console.WriteLine($"***Error*** IB option position does not exist for ONE trade {one_trade.trade_id}, expiration: {expiration}, strike: {strike}, quantity: {quantity}");
                     continue;
                 }
 
                 // save one position reference in ib position
-                ib_position.onePositions.Add(one_position);
+                ib_position.oneTrades.Add(one_trade.trade_id);
 
                 // add one_position quantity to accounted_for_quantity...this will be checked later
-                ib_position.accounted_for_quantity += one_position.quantity;
+                ib_position.accounted_for_quantity += one_quantity;
             }
         }
         return true;
