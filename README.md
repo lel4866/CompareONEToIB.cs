@@ -4,20 +4,27 @@ This program compares exported data from OptioneNet Explorer (ONE) to that from 
 sure that the option positions actually held in IB are the ones that are beng modeled by ONE.
 
 The IB data is exported by running IB's Trader WorkStation, opening the Account Window, going to the File menu
-and selecting Export Portfolio. This is what the data looks like:
+and selecting Export Portfolio. When the Export Portfolio/Save dialog pops up, click the Configure Export Settings...
+button and when the Trader Workstation Configuration dialog pops up, make sure that Advanced Contract display is checked
+and  Include "Exchange" column, Include "Account" column, Include "Account" column, and Include "Account Number" column
+are unchecked
+
+This is what the data looks like:
 
 ```
 Portfolio
-Account,Financial Instrument Description,Exchange,Position,Currency,Market Price,Market Value,Average Price,Unrealized P&L,Realized P&L,Liquidate Last,Security Type,Delta Dollars
-UXXXXXXX,SPX    APR2022 4300 P [SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
-UXXXXXXX,SPX    APR2022 4000 P [SPXW  220429P04000000 100],CBOE,-4,USD,79.0655136,-31626.21,82.2374865,1268.79,0.00,No,OPT,309447.06
-UXXXXXXX,SPX    APR2022 3250 P [SPXW  220429P03250000 100],CBOE,2,USD,27.4843445,5496.87,27.5892635,-20.98,0.00,No,OPT,-48976.59
-UXXXXXXX,SPX    APR2022 4325 P [SPX   220414P04325000 100],CBOE,2,USD,115.3174286,23063.49,109.4212135,1179.24,0.00,No,OPT,-248383.25
-UXXXXXXX,SPX    APR2022 4200 P [SPX   220414P04200000 100],CBOE,2,USD,95.0227967,19004.56,118.2114235,-4637.73,0.00,No,OPT,-202399.81
+Financial Instrument Description,Position,Currency,Market Price,Market Value,Average Price,Unrealized P&L,Realized P&L,Liquidate Last,Security Type,Delta Dollars
+SPX    APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
+SPX    APR2022 4000 P [SPXW  220429P04000000 100],-4,USD,75.819664,-30327.87,82.2374865,2567.13,0.00,No,OPT,305432.86
+SPX    APR2022 3250 P [SPXW  220429P03250000 100],2,USD,25.7420445,5148.41,27.5892635,-369.44,0.00,No,OPT,-47068.39
+SPX    APR2022 4325 P [SPX   220414P04325000 100],2,USD,111.5892257,22317.85,109.4212135,433.60,0.00,No,OPT,-248012.63
 ```
 
 The ONE data is exported by opening ONE, clicking on Reports, then on the Reports window, clicking on the little filter icon on the Account dropdown
-and selecting the account that holds the trades you want to compare with, then clicking the Export button and saving the file. This is what the data looks like:
+and selecting the account that holds the trades you want to compare with, then clicking the Export button and saving the file.
+**Make sure that the Report Type dropdown is set to Detail.**
+
+This is what the data looks like:
 
 ```
 ONE Detail Report

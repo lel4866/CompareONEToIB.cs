@@ -49,11 +49,10 @@ class ONEPosition
     public float open_price;
 }
 
-//Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
-//UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
+//Financial Instrument Description, Position, Currency, Market Price, Market Value, Average Price, Unrealized P&L, Realized P&L, Liquidate Last, Security Type, Delta Dollars
+//SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
 class IBPosition
 {
-    public string account = "";
     public OptionType optionType;
     public DateTime open_dt;
     public int strike;
@@ -65,8 +64,8 @@ class IBPosition
     public float realizedPnL;
 
     // used only during reconciliation with ONE positions
-    int accounted_for_quantity = 0;
-    List<ONEPosition> onePositions = new();
+    public int accounted_for_quantity = 0;
+    public List<ONEPosition> onePositions = new();
 }
 
 static class Program
@@ -77,10 +76,9 @@ static class Program
     public const string one_directory = @"C:\Users\lel48\OneDrive\Documents\ONEExport\";
 
     static string one_account = "";
-    static string ib_account = "";
 
     static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
-    static Dictionary<(DateOnly, int), int> ibPositions = new(); // key is (Expiration, Strike); value is quantity
+    static Dictionary<(DateOnly, int), IBPosition> ibPositions = new(); // key is (Expiration, Strike); value is quantity
 
     static int Main(string[] args)
     {
@@ -239,8 +237,8 @@ static class Program
     }
 
     //Portfolio
-    //Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
-    //UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
+    //Financial Instrument Description, Position, Currency, Market Price, Market Value, Average Price, Unrealized P&L, Realized P&L, Liquidate Last, Security Type, Delta Dollars
+    //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
     static bool ProcessIBFile(string full_filename)
     {
         Console.WriteLine("Processing IB file: " +  full_filename);
@@ -258,11 +256,11 @@ static class Program
             return false;
         }
 
-        string ib_header1 = "Account,Financial Instrument Description,Exchange,Position,Currency,Market Price,Market Value,Average Price,Unrealized P&L,Realized P&L,Liquidate Last,Security Type,Delta Dollars";
+        string ib_header1 = "Financial Instrument Description,Position,Currency,Market Price,Market Value,Average Price,Unrealized P&L,Realized P&L,Liquidate Last,Security Type,Delta Dollars";
         line1 = lines[1].Trim();
         if (line1 != ib_header1)
         {
-            Console.WriteLine("***Error*** First line of IB file must start with: Account,Financial Instrument Description,Exchange,Position,...");
+            Console.WriteLine("***Error*** First line of IB file must start with: Financial Instrument Description,Position,Currency,Market Price,...");
             return false;
         }
 
@@ -284,82 +282,67 @@ static class Program
         return true;
     }
 
-    //Account, Financial Instrument Description, Exchange, Position, Currency, Market Price,Market Value, Average Price,Unrealized P&L,Realized P&L,Liquidate Last, Security Type,Delta Dollars
-    //UXXXXXXX,SPX APR2022 4300 P[SPXW  220429P04300000 100],CBOE,2,USD,123.0286484,24605.73,123.5542635,-105.12,0.00,No,OPT,-246551.12
+    //Financial Instrument Description, Position, Currency, Market Price, Market Value, Average Price, Unrealized P&L, Realized P&L, Liquidate Last, Security Type, Delta Dollars
+    //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
     static bool ParseIBPositionLine(int line_index, List<string> fields)
     {
-        if (fields.Count != 13)
+        if (fields.Count != 11)
         {
-            Console.WriteLine($"***Error*** IB Position line #{line_index + 1} must have 12 fields, not {fields.Count} fields");
+            Console.WriteLine($"***Error*** IB Position line #{line_index + 1} must have 11 fields, not {fields.Count} fields");
             return false;
-        }
-
-        ib_account = fields[0].Trim();
-        if (ib_account.Length == 0)
-        {
-            Console.WriteLine($"***Error*** Account id (first field) in IB line #{line_index + 1} is blank");
-            return false;
-        }
-
-        // ignore positions which are not CBOE SPX Options
-        if (fields[2].Trim() != "CBOE" || fields[11].Trim() != "OPT" || !fields[1].StartsWith("SPX"))
-        {
-            Console.WriteLine($"Ignoring line #{line_index + 1} in IB file: not an SPX option");
-            return true;
         }
 
         IBPosition ibPosition = new();
-        ibPosition.account = ib_account;
 
-        bool rc = int.TryParse(fields[3], out ibPosition.quantity);
+        bool rc = int.TryParse(fields[1], out ibPosition.quantity);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Position: {fields[3]}");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Position: {fields[1]}");
             return false;
         }
 
-        rc = float.TryParse(fields[5], out ibPosition.marketPrice);
+        rc = float.TryParse(fields[3], out ibPosition.marketPrice);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Market Price: {fields[5]}");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Market Price: {fields[3]}");
             return false;
         }
 
-        rc = float.TryParse(fields[7], out ibPosition.averagePrice);
+        rc = float.TryParse(fields[5], out ibPosition.averagePrice);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Average Price: {fields[7]}");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Average Price: {fields[5]}");
             return false;
         }
 
-        rc = float.TryParse(fields[8], out ibPosition.unrealizedPnL);
+        rc = float.TryParse(fields[6], out ibPosition.unrealizedPnL);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Unrealized P&L: {fields[8]}");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Unrealized P&L: {fields[6]}");
             return false;
         }
 
-        rc = float.TryParse(fields[9], out ibPosition.realizedPnL);
+        rc = float.TryParse(fields[7], out ibPosition.realizedPnL);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Realized P&L: {fields[9]}");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Realized P&L: {fields[7]}");
             return false;
         }
 
-        rc = ParseOptionSpec(fields[1], @".*\[(\w+) +(.+) \w+\]$", out OptionType type, out DateOnly expiration, out int strike);
+        rc = ParseOptionSpec(fields[0], @".*\[(\w+) +(.+) \w+\]$", out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[1]}");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[0]}");
             return false;
         } 
 
-        var key = (expiration, strike);
+        var key = (ibPosition.expiration, ibPosition.strike);
         if (ibPositions.ContainsKey(key))
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({expiration},{strike})");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({ibPosition.expiration},{ibPosition.strike})");
             return false;
         }
-        ibPositions.Add((expiration, strike), ibPosition.quantity);
+        ibPositions.Add((ibPosition.expiration, ibPosition.strike), ibPosition);
         return true;
     }
 
@@ -669,6 +652,21 @@ static class Program
             bool rc = ParseOptionSpec(fields[7], @"(\w+) +(.+)$", out position.optionType, out position.expiration, out position.strike);
             if (!rc)
                 return null;
+
+            // confirm by parsing Expiry field
+            if (DateOnly.TryParse(fields[8], out DateOnly expiry))
+            {
+                if (position.expiration.CompareTo(expiry) != 0)
+                {
+                    if (expiry.AddDays(1) == position.expiration)
+                        position.expiration = expiry;
+                    else
+                    {
+                        Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has discrepency between date in Symbol field {position.expiration} and date in Expiry field {expiry}");
+                        return null;
+                    }
+                }
+            }
         }
         else if (fields[9] == "Stock")
         {
@@ -691,21 +689,34 @@ static class Program
 
     static bool CompareONEPositionsToIBPositions()
     {
+        // display IB positions
+        displayIBPositions();
+
         // go through each ONE trade and then each position in ONE trade and find it's associated IB Position
         foreach (ONETrade one_trade in oneTrades.Values)
         {
+            int position_index = -1;
             foreach (ONEPosition one_position in one_trade.positions)
             {
-                if (!ibPositions.TryGetValue((one_position.expiration, one_position.strike), out int value))
+                position_index++;
+                if (!ibPositions.TryGetValue((one_position.expiration, one_position.strike), out IBPosition ib_position))
                 {
-                    Console.WriteLine($"***Error*** IB position does not exist for ONE trade {one_position.trade_id}, expiration: {one_position.expiration}, strike: {one_position.expiration}, quantity: {one_position.quantity}");
-                    // to do: write to log, reconciliation trade file
+                    if (one_position.optionType == OptionType.Stock)
+                    {
+                        Console.WriteLine($"***Error*** IB position does not exist for ONE stock trade {one_position.trade_id}, quantity: {one_position.quantity}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"***Error*** IB position does not exist for ONE option trade {one_position.trade_id}, expiration: {one_position.expiration}, strike: {one_position.strike}, quantity: {one_position.quantity}");
+                    }
                     continue;
                 }
 
                 // save one position reference in ib position
+                ib_position.onePositions.Add(one_position);
 
                 // add one_position quantity to accounted_for_quantity...this will be checked later
+                ib_position.accounted_for_quantity += one_position.quantity;
             }
         }
         return true;
@@ -801,5 +812,15 @@ static class Program
         }
 
         return true;
+    }
+
+    static void displayIBPositions()
+    {
+        Console.WriteLine("\nIB Positions:");
+        foreach (IBPosition position in ibPositions.Values)
+        {
+            Console.WriteLine($"expiration: {position.expiration}, strike: {position.strike}, quantity: {position.quantity}");
+        }
+        Console.WriteLine();
     }
 }
