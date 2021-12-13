@@ -32,7 +32,7 @@ class ONETrade
     public int dit;
     public float total_commission;
     public float pnl;
-    public Dictionary<(OptionType, DateOnly, int), int> positions = new(); // these are consolidated option positions: (OptionType, Expiration, Strike);
+    public Dictionary<(string, OptionType, DateOnly, int), int> positions = new(); // these are consolidated option positions: (symbol, OptionType, Expiration, Strike);
 }
 
 //,,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission
@@ -43,6 +43,7 @@ class ONEPosition
     public string trade_id = "";
     public OptionType optionType;
     public DateTime open_dt;
+    public string symbol; // SPX, SPXW, etc
     public int strike;
     public DateOnly expiration;
     public int quantity; // positive==buy, negative==sell
@@ -55,6 +56,7 @@ class IBPosition
 {
     public OptionType optionType;
     public DateTime open_dt;
+    public string symbol; // SPX, SPXW, etc
     public int strike;
     public DateOnly expiration;
     public int quantity;
@@ -329,7 +331,7 @@ static class Program
             return false;
         }
 
-        rc = ParseOptionSpec(fields[0], @".*\[(\w+) +(.+) \w+\]$", out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
+        rc = ParseOptionSpec(fields[0], @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
         if (!rc)
         {
             Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[0]}");
@@ -347,8 +349,9 @@ static class Program
     }
 
     // SPX APR2022 4300 P[SPXW  220429P04300000 100]
-    static bool ParseOptionSpec(string field, string regex, out OptionType type, out DateOnly expiration, out int strike)
+    static bool ParseOptionSpec(string field, string regex, out string symbol, out OptionType type, out DateOnly expiration, out int strike)
     {
+        symbol = "";
         type = OptionType.Put;
         expiration = new();
         strike = 0;
@@ -360,7 +363,7 @@ static class Program
         if (match0.Groups.Count != 3)
             return false;
 
-        string option_class = match0.Groups[1].Value;
+        symbol = match0.Groups[1].Value.Trim();
         string option_code = match0.Groups[2].Value;
         int year = int.Parse(option_code[0..2]) + 2000;
         int month = int.Parse(option_code[2..4]);
@@ -508,7 +511,7 @@ static class Program
                     return false;
 
                 // now add option position to consolidated positions dictionary; remove existing position if quantity now 0
-                var key = (position.optionType, position.expiration, position.strike);
+                var key = (position.symbol, position.optionType, position.expiration, position.strike);
                 if (curOneTrade.positions.ContainsKey(key))
                 {
                     curOneTrade.positions[key] += position.quantity;
@@ -517,7 +520,7 @@ static class Program
                 }
                 else
                 {
-                    Debug.Assert(position.quantity > 0);
+                    Debug.Assert(position.quantity != 0);
                     curOneTrade.positions.Add(key, position.quantity);
                 }
             }
@@ -661,7 +664,7 @@ static class Program
 
         if (fields[9] == "Put" || fields[9] == "Call")
         {
-            bool rc = ParseOptionSpec(fields[7], @"(\w+) +(.+)$", out position.optionType, out position.expiration, out position.strike);
+            bool rc = ParseOptionSpec(fields[7], @"(\w+) +(.+)$", out position.symbol, out position.optionType, out position.expiration, out position.strike);
             if (!rc)
                 return null;
 
@@ -710,20 +713,16 @@ static class Program
         foreach (ONETrade one_trade in oneTrades.Values)
         {
             int position_index = -1;
-            foreach (((OptionType type, DateOnly expiration, int strike), int one_quantity) in one_trade.positions)
+            foreach (((string symbol, OptionType type, DateOnly expiration, int strike), int one_quantity) in one_trade.positions)
             {
                 position_index++;
                 if (!ibPositions.TryGetValue((type, expiration, strike), out IBPosition ib_position))
                 {
-                    int quantity = one_trade.positions[(type, expiration, strike)];
-                    if (quantity == 0)
-                    {
-                        int xxx = 1;
-                    }
+                    int quantity = one_trade.positions[(symbol, type, expiration, strike)];
                     if (type == OptionType.Stock)
                         Console.WriteLine($"***Error*** IB stock position does not exist for ONE trade {one_trade.trade_id}, quantity: {quantity}");
                     else
-                        Console.WriteLine($"***Error*** IB option position does not exist for ONE trade {one_trade.trade_id}, expiration: {expiration}, strike: {strike}, quantity: {quantity}");
+                        Console.WriteLine($"***Error*** IB option position does not exist for ONE trade {one_trade.trade_id}, {symbol}, expiration: {expiration}, strike: {strike}, quantity: {quantity}");
                     continue;
                 }
 
@@ -732,6 +731,15 @@ static class Program
 
                 // add one_position quantity to accounted_for_quantity...this will be checked later
                 ib_position.accounted_for_quantity += one_quantity;
+            }
+        }
+
+        // now make sure each IB trade has proper associated one position
+        foreach (IBPosition position in ibPositions.Values)
+        {
+            if (position.accounted_for_quantity != position.quantity)
+            {
+                Console.WriteLine($"***Error*** IB quantity does not match ONE quantity for IB position");
             }
         }
         return true;
@@ -834,7 +842,10 @@ static class Program
         Console.WriteLine("\nIB Positions:");
         foreach (IBPosition position in ibPositions.Values)
         {
-            Console.WriteLine($"expiration: {position.expiration}, strike: {position.strike}, quantity: {position.quantity}");
+            if (position.optionType == OptionType.Stock)
+                Console.WriteLine($"{position.symbol} {position.optionType}: quantity = {position.quantity}");
+            else
+                Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, strike = {position.strike}, quantity = {position.quantity}");
         }
         Console.WriteLine();
     }
