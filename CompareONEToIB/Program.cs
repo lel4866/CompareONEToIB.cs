@@ -8,7 +8,8 @@ enum OptionType
 {
     Put,
     Call,
-    Stock
+    Stock,
+    Futures
 }
 
 enum TradeStatus
@@ -43,7 +44,7 @@ class ONEPosition
     public string trade_id = "";
     public OptionType optionType;
     public DateTime open_dt;
-    public string symbol; // SPX, SPXW, etc
+    public string symbol = ""; // SPX, SPXW, etc
     public int strike;
     public DateOnly expiration;
     public int quantity; // positive==buy, negative==sell
@@ -55,15 +56,14 @@ class ONEPosition
 class IBPosition
 {
     public OptionType optionType;
-    public DateTime open_dt;
-    public string symbol; // SPX, SPXW, etc
-    public int strike;
-    public DateOnly expiration;
+    public string symbol = ""; // SPX, SPXW, etc
+    public int strike = 0;
+    public DateOnly expiration = new();
     public int quantity;
-    public float averagePrice; // average entry price
-    public float marketPrice; // current market price
-    public float unrealizedPnL;
-    public float realizedPnL;
+    //public float averagePrice; // average entry price
+    //public float marketPrice; // current market price
+    //public float unrealizedPnL;
+    //public float realizedPnL;
 
     // used only during reconciliation with ONE positions
     public int accounted_for_quantity = 0;
@@ -81,6 +81,8 @@ static class Program
 
     static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
     static Dictionary<(OptionType, DateOnly, int), IBPosition> ibPositions = new(); // key is (OptionType, Expiration, Strike); value is quantity
+    static Dictionary<string, int> ib_columns = new(); // key is column name, value is column index
+    static Dictionary<string, int> one_columns = new(); // key is column name, value is column index
 
     static int Main(string[] args)
     {
@@ -258,23 +260,43 @@ static class Program
             return false;
         }
 
-        string ib_header1 = "Financial Instrument Description,Position,Currency,Market Price,Market Value,Average Price,Unrealized P&L,Realized P&L,Liquidate Last,Security Type,Delta Dollars";
+        // check for required columns and get index of last required column
+        string[] ib_required_columns = { "Financial Instrument Description", "Position", "Security Type" };
         line1 = lines[1].Trim();
-        if (line1 != ib_header1)
+        string[] column_names = line1.Split(',');
+        for (int i = 0; i < column_names.Length; i++)
         {
-            Console.WriteLine("***Error*** First line of IB file must start with: Financial Instrument Description,Position,Currency,Market Price,...");
-            return false;
+            string xx = column_names[i];
+            ib_columns.Add(column_names[i].Trim(), i);
         }
 
+        int index_of_last_required_column = 0;
+        for (int i=0; i<ib_required_columns.Length; i++)
+        {
+            if (!ib_columns.TryGetValue(ib_required_columns[i], out int colnum))
+            {
+                Console.WriteLine($"***Error*** IB file must contain column named {ib_required_columns[i]}");
+                return false;
+            }
+            index_of_last_required_column = Math.Max(colnum, index_of_last_required_column);
+        }
+
+        // now process each IB position line
         for (int line_index = 2; line_index < lines.Length; line_index++)
         {
-            bool rc = parseCSVLine(lines[line_index], out List<string> fields);
+            bool rc = ParseCSVLine(lines[line_index], out List<string> fields);
             if (!rc)
                 return false;
 
             // blank line terminates list of positions. Next line must be "Cash Balances"
             if (fields.Count == 0)
                 break;
+
+            if (fields.Count < index_of_last_required_column+1)
+            {
+                Console.WriteLine($"***Error*** IB position line #{line_index + 1} must have {index_of_last_required_column + 1} fields, not {fields.Count} fields");
+                return false;
+            }
 
             rc = ParseIBPositionLine(line_index, fields);
             if (!rc)
@@ -286,23 +308,21 @@ static class Program
 
     //Financial Instrument Description, Position, Currency, Market Price, Market Value, Average Price, Unrealized P&L, Realized P&L, Liquidate Last, Security Type, Delta Dollars
     //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
+    //SPY,100,USD,463.3319397,46333.19,463.02,31.19,0.00,No,STK,46333.19
+    //MES MAR2022,1, USD,4624.50,23122.50,4625.604,-5.52,0.00, No, FUT,23136.14
+
     static bool ParseIBPositionLine(int line_index, List<string> fields)
     {
-        if (fields.Count != 11)
-        {
-            Console.WriteLine($"***Error*** IB Position line #{line_index + 1} must have 11 fields, not {fields.Count} fields");
-            return false;
-        }
-
         IBPosition ibPosition = new();
 
-        bool rc = int.TryParse(fields[1], out ibPosition.quantity);
+        int quantity_col = ib_columns["Position"];
+        bool rc = int.TryParse(fields[quantity_col], out ibPosition.quantity);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Position: {fields[1]}");
+            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Position: {fields[quantity_col]}");
             return false;
         }
-
+#if false
         rc = float.TryParse(fields[3], out ibPosition.marketPrice);
         if (!rc)
         {
@@ -330,13 +350,36 @@ static class Program
             Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Realized P&L: {fields[7]}");
             return false;
         }
+#endif
+        int description_col = ib_columns["Financial Instrument Description"];
+        string description = fields[description_col];
 
-        rc = ParseOptionSpec(fields[0], @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
-        if (!rc)
+        int security_type_col = ib_columns["Security Type"];
+        string security_type = fields[security_type_col].Trim();
+        switch (security_type)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[0]}");
-            return false;
-        } 
+            case "OPT":
+                rc = ParseOptionSpec(description, @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
+                if (!rc)
+                {
+                    Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[description_col]}");
+                    return false;
+                }
+
+                break;
+
+            case "FUT":
+                //MES      MAR2022,1,USD,4624.50,23122.50,4625.604,-5.52,0.00,No,FUT,23136.14
+                ibPosition.optionType = OptionType.Futures;
+                rc = ParseFuturesSpec(description, @"(\w+) +(\w+)$", out ibPosition.symbol, out ibPosition.expiration);
+                break;
+
+            case "STK":
+                //SPY,100,USD,463.3319397,46333.19,463.02,31.19,0.00,No,STK,46333.19
+                ibPosition.optionType = OptionType.Stock;
+                ibPosition.symbol = fields[0].Trim();
+                break;
+        }
 
         var key = (ibPosition.optionType, ibPosition.expiration, ibPosition.strike);
         if (ibPositions.ContainsKey(key))
@@ -346,6 +389,24 @@ static class Program
         }
         ibPositions.Add((ibPosition.optionType, ibPosition.expiration, ibPosition.strike), ibPosition);
         return true;
+    }
+
+    //MES      MAR2022,1,USD,4624.50,23122.50,4625.604,-5.52,0.00,No,FUT,23136.14
+    static bool ParseFuturesSpec(string field, string regex, out string symbol, out DateOnly expiration)
+    {
+        symbol = "";
+        expiration = new();
+
+        MatchCollection mc = Regex.Matches(field, regex);
+        if (mc.Count > 1)
+            return false;
+        Match match0 = mc[0];
+        if (match0.Groups.Count != 3)
+            return false;
+        symbol = match0.Groups[1].Value;
+        string expiration_string = match0.Groups[2].Value;
+        bool rc = DateOnly.TryParse(expiration_string, out expiration); // day of expiration will be incorrect (it will be 1)
+        return rc;
     }
 
     // SPX APR2022 4300 P[SPXW  220429P04300000 100]
@@ -477,7 +538,7 @@ static class Program
                 curOneTrade = null;
                 continue;
             }
-            bool rc = parseCSVLine(line, out List<string> fields);
+            bool rc = ParseCSVLine(line, out List<string> fields);
 
             if (fields.Count < 14)
             {
@@ -707,7 +768,7 @@ static class Program
     static bool CompareONEPositionsToIBPositions()
     {
         // display IB positions
-        displayIBPositions();
+        DisplayIBPositions();
 
         // go through each ONE trade and then each position in ONE trade and find it's associated IB Position
         foreach (ONETrade one_trade in oneTrades.Values)
@@ -716,7 +777,7 @@ static class Program
             foreach (((string symbol, OptionType type, DateOnly expiration, int strike), int one_quantity) in one_trade.positions)
             {
                 position_index++;
-                if (!ibPositions.TryGetValue((type, expiration, strike), out IBPosition ib_position))
+                if (!ibPositions.TryGetValue((type, expiration, strike), out IBPosition? ib_position))
                 {
                     int quantity = one_trade.positions[(symbol, type, expiration, strike)];
                     if (type == OptionType.Stock)
@@ -746,7 +807,7 @@ static class Program
     }
 
     const char delimiter = ',';
-    static bool parseCSVLine(string line, out List<string> fields)
+    static bool ParseCSVLine(string line, out List<string> fields)
     {
         fields = new();
         int state = 0;
@@ -777,7 +838,7 @@ static class Program
                 case 1: // looking for end of field that didn't start with quote (interior quotes ignored)
                     if (c == delimiter)
                     {
-                        fields.Add(line.Substring(start, i - start).Trim());
+                        fields.Add(line[start..i].Trim());
                         state = 0;
                     }
                     break;
@@ -837,7 +898,7 @@ static class Program
         return true;
     }
 
-    static void displayIBPositions()
+    static void DisplayIBPositions()
     {
         Console.WriteLine("\nIB Positions:");
         foreach (IBPosition position in ibPositions.Values)
