@@ -805,6 +805,9 @@ static class Program
 
     static bool CompareONEPositionsToIBPositions()
     {
+        // display ONE positions
+        DisplayONEPositions();
+
         // display IB positions
         DisplayIBPositions();
 
@@ -986,6 +989,26 @@ static class Program
         }
 
         return true;
+    }
+
+    //static Dictionary<(string, OptionType, DateOnly, int), (int, List<string>)> consolidatedOnePositions = new();
+    static void DisplayONEPositions()
+    {
+        Console.WriteLine("\nONE Positions:");
+        foreach (((string symbol, OptionType optionType, DateOnly expiration, int strike), (int quantity, List<string> trades)) in consolidatedOnePositions)
+        {
+            switch (optionType)
+            {
+                case OptionType.Stock:
+                    Console.WriteLine($"{symbol} {optionType}: quantity = {quantity}");
+                    break;
+                case OptionType.Call:
+                case OptionType.Put:
+                    Console.WriteLine($"{symbol} {optionType}: expiration = {expiration}, strike = {strike}, quantity = {quantity}");
+                    break;
+            }
+        }
+        Console.WriteLine();
     }
 
     static void DisplayIBPositions()
