@@ -82,6 +82,14 @@ static class Program
 
     static string one_account = "";
 
+    static string master_symbol = "SPX";
+    static Dictionary<string, HashSet<string>> associate_symbols = new Dictionary<string, HashSet<string>>()
+        {
+        { "SPX", new HashSet<string> { "SPY", "MES", "ES" } },
+        { "RUT", new HashSet<string> { "IWM", "M2K", "RTY" } },
+        { "NDX", new HashSet<string> { "QQQ", "MNQ", "NQ" } }
+    };
+
     static Dictionary<string, int> ib_columns = new(); // key is column name, value is column index
     static Dictionary<string, int> one_columns = new(); // key is column name, value is column index
     static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
@@ -94,15 +102,6 @@ static class Program
 
     static int Main(string[] args)
     {
-#if false
-        string line = "\"ab\"\"c\"";
-        int i = 4;
-        string line1 = line[..i];
-        string line2 = line[(i+1)..];
-        string line3 = line1 + line2;
-        string line = "\"ab\"\"c\"";
-        bool rc1 = parseCVSLine(line, out List<string> fields);
-#endif
         var stopWatch = new Stopwatch();
         stopWatch.Start();
 
@@ -143,7 +142,7 @@ static class Program
             string latest_full_filename = "";
             files = Directory.GetFiles(one_directory, '*' + ending, SearchOption.TopDirectoryOnly);
             bool file_found = false;
-            foreach(string full_filename in files)
+            foreach (string full_filename in files)
             {
                 string filename = Path.GetFileName(full_filename);
                 string datestr = filename[..^ending.Length];
@@ -183,7 +182,7 @@ static class Program
     {
         const string filename_pattern = "*.csv"; // file names look like: portfolio.20211208.csv
         const string filename_prefix = "portfolio."; // file names look like: portfolio.20211208.csv
-        int filename_prefix_len = filename_prefix.Length; 
+        int filename_prefix_len = filename_prefix.Length;
 
         string[] files;
         if (Directory.Exists(ib_directory))
@@ -224,7 +223,8 @@ static class Program
 
                 file_found = true;
                 DateTime dt = new(year, month, day);
-                if (dt > latestDate) { 
+                if (dt > latestDate)
+                {
                     latestDate = dt;
                     latest_full_filename = full_filename;
                 }
@@ -253,7 +253,7 @@ static class Program
     //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
     static bool ProcessIBFile(string full_filename)
     {
-        Console.WriteLine("Processing IB file: " +  full_filename);
+        Console.WriteLine("Processing IB file: " + full_filename);
         string[] lines = File.ReadAllLines(full_filename);
         if (lines.Length < 3)
         {
@@ -279,7 +279,7 @@ static class Program
         }
 
         int index_of_last_required_column = 0;
-        for (int i=0; i<ib_required_columns.Length; i++)
+        for (int i = 0; i < ib_required_columns.Length; i++)
         {
             if (!ib_columns.TryGetValue(ib_required_columns[i], out int colnum))
             {
@@ -300,7 +300,7 @@ static class Program
             if (fields.Count == 0)
                 break;
 
-            if (fields.Count < index_of_last_required_column+1)
+            if (fields.Count < index_of_last_required_column + 1)
             {
                 Console.WriteLine($"***Error*** IB position line #{line_index + 1} must have {index_of_last_required_column + 1} fields, not {fields.Count} fields");
                 return false;
@@ -391,13 +391,14 @@ static class Program
         var key = (ibPosition.symbol, ibPosition.optionType, ibPosition.expiration, ibPosition.strike);
         if (ibPositions.ContainsKey(key))
         {
-            if (ibPosition.optionType == OptionType.Put || ibPosition.optionType == OptionType.Call) {
+            if (ibPosition.optionType == OptionType.Put || ibPosition.optionType == OptionType.Call)
+            {
                 Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({ibPosition.symbol} {ibPosition.optionType} {ibPosition.expiration},{ibPosition.strike})");
                 return false;
             }
             else
             {
-                if (ibPosition.optionType == OptionType.Futures) 
+                if (ibPosition.optionType == OptionType.Futures)
                     Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate futures entry ({ibPosition.symbol} {ibPosition.expiration})");
                 else
                     Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate stock entry ({ibPosition.symbol})");
@@ -564,7 +565,8 @@ static class Program
             }
 
             string account1 = fields[1].Trim();
-            if (account1.Length != 0) {
+            if (account1.Length != 0)
+            {
                 if (curOneTrade != null)
                 {
                     // do whatever when we've parsed all position lines for trade
@@ -629,7 +631,8 @@ static class Program
     // ",Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc"
     //,"IB1",12/3/2021,285,"244+1lp 2021-10-11 11:37", SPX, Open, Custom,10/11/2021 11:37 AM,,53,58,158973.30,46.46,13780.74,8.67
     // we don't parse Margin,Comms,PnL,PnLperc
-    static ONETrade? ParseONETradeLine(int line_index, List<string> fields) {
+    static ONETrade? ParseONETradeLine(int line_index, List<string> fields)
+    {
         if (fields.Count != 16)
         {
             Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} must have 16 fields, not {fields.Count} fields");
@@ -824,7 +827,8 @@ static class Program
                     case OptionType.Stock:
                         // an SPX stock position in ONE could be satisfied by an IB position in SPY, ES, or MES, wher the expiration of ES or MES could be anything
                         // because we save IB positions using a key with multiple values, we have to search through all IB positions to find possible resolutions to this
-                        foreach ((string test_symbol, OptionType test_type, DateOnly test_expiration, int test_strike) in ibPositions.Keys) {
+                        foreach ((string test_symbol, OptionType test_type, DateOnly test_expiration, int test_strike) in ibPositions.Keys)
+                        {
                             switch (test_symbol)
                             {
                                 case "SPY":
@@ -921,7 +925,7 @@ static class Program
         int state = 0;
         int start = 0;
         char c;
-        for (int i=0; i<line.Length; i++)
+        for (int i = 0; i < line.Length; i++)
         {
             c = line[i];
             switch (state)
@@ -960,7 +964,7 @@ static class Program
                     if (c == '"')
                     {
                         // double quote...throw away first one
-                        line = line[..i] + line[(i+1)..];
+                        line = line[..i] + line[(i + 1)..];
                         i--;
                         state = 2;
                     }
