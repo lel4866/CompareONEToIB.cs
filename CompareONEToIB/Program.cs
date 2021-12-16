@@ -57,7 +57,8 @@ class ONEPosition
 //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
 class IBPosition
 {
-    public OptionType optionType;
+    public OptionType optionType; // just Put, Call, or Stock...futures are converted to equivalent SPX stock...so is SPY
+    public OptionType actualOptionType;
     public string symbol = ""; // SPX, SPXW, etc
     public int strike = 0;
     public DateOnly expiration = new();
@@ -821,6 +822,20 @@ static class Program
                 switch (type)
                 {
                     case OptionType.Stock:
+                        // an SPX stock position in ONE could be satisfied by an IB position in SPY, ES, or MES, wher the expiration of ES or MES could be anything
+                        // because we save IB positions using a key with multiple values, we have to search through all IB positions to find possible resolutions to this
+                        foreach ((string test_symbol, OptionType test_type, DateOnly test_expiration, int test_strike) in ibPositions.Keys) {
+                            switch (test_symbol)
+                            {
+                                case "SPY":
+                                    break;
+
+                                case "MES":
+                                    break;
+                                case "ES":
+                                    break;
+                            }
+                        }
                         if (one_trade_ids.Count == 1)
                             Console.WriteLine($"***Error*** ONE has a stock position in {symbol} of {one_quantity} shares, in trade {one_trade_ids[0]}, with no matching position in IB");
                         else
@@ -834,7 +849,7 @@ static class Program
                             }
                         }
                         break;
-
+#if false // ONE doesn't have futures positions
                     case OptionType.Futures:
                         if (one_trade_ids.Count == 1)
                             Console.WriteLine($"***Error*** ONE has a futures position in {symbol} {expiration} of {one_quantity} contracts, in trade {one_trade_ids[0]}, with no matching position in IB");
@@ -849,7 +864,7 @@ static class Program
                             }
                         }
                         break;
-
+#endif
                     case OptionType.Call:
                     case OptionType.Put:
                         if (one_trade_ids.Count == 1)
