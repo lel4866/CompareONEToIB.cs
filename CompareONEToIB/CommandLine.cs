@@ -33,7 +33,7 @@ internal static class CommandLine
                         Console.WriteLine("Compare OptionnetExplorer positions with Interactive Brokers positions");
                         Console.WriteLine("Command line arguments:");
                         Console.WriteLine("    --version, -v : display version number");
-                        Console.WriteLine("    --symbol, -s  : primary option index symbol; currently, SPX, RUT, or NDX);
+                        Console.WriteLine("    --symbol, -s  : specify primary option index symbol; currently, SPX, RUT, or NDX");
                         break;
 
                     default:
@@ -47,7 +47,7 @@ internal static class CommandLine
                 switch (arg_name)
                 {
                     case "symbol":
-                        if (!Program.associate_symbols.ContainsKey(arg))
+                        if (!Program.associated_symbols.ContainsKey(arg))
                         {
                             Console.WriteLine("Unknown symbol: " + arg + ". Program exiting.");
                             System.Environment.Exit(-1);
