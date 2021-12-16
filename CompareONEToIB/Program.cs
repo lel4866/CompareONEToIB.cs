@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+using CompareONEToIB;
+
+namespace CompareOneToIB;
 
 enum OptionType
 {
@@ -82,8 +85,8 @@ static class Program
 
     static string one_account = "";
 
-    static string master_symbol = "SPX";
-    static Dictionary<string, HashSet<string>> associate_symbols = new Dictionary<string, HashSet<string>>()
+    internal static string master_symbol = "SPX";
+    internal static Dictionary<string, HashSet<string>> associate_symbols = new Dictionary<string, HashSet<string>>()
         {
         { "SPX", new HashSet<string> { "SPY", "MES", "ES" } },
         { "RUT", new HashSet<string> { "IWM", "M2K", "RTY" } },
@@ -105,11 +108,9 @@ static class Program
         var stopWatch = new Stopwatch();
         stopWatch.Start();
 
-        bool rc = ProcessCommandLineArguments(args); // calls System.Environment.Exit(-1) if bad command line arguments
-        if (!rc)
-            return -1;
+        CommandLine.ProcessCommandLineArguments(args); // calls System.Environment.Exit(-1) if bad command line arguments
 
-        rc = ReadONEData();
+        bool rc = ReadONEData();
         if (!rc)
             return -1;
 
@@ -125,11 +126,6 @@ static class Program
         Console.WriteLine($"\nElapsed time = {stopWatch.Elapsed}");
 
         return 0;
-    }
-
-    static bool ProcessCommandLineArguments(string[] args)
-    {
-        return true;
     }
 
     static bool ReadONEData()
