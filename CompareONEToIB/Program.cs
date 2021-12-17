@@ -7,7 +7,7 @@ using CompareONEToIB;
 
 namespace CompareOneToIB;
 
-enum OptionType
+public enum OptionType
 {
     Put,
     Call,
@@ -38,7 +38,7 @@ class ONETrade
     //public float pnl;
 
     // these are consolidated positions for trade: key is (symbol, OptionType, Expiration, Strike); value is quantity
-    public Dictionary<(string, OptionType, DateOnly, int), int> positions = new();
+    public Dictionary<OptionKey, int> positions = new();
 }
 
 //,,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission
@@ -56,12 +56,47 @@ class ONEPosition
     public float open_price;
 }
 
+// used to sort entriesd in consolidatedOnePositions SortedDictionary
+public class OptionKey : IComparable<OptionKey>
+{
+    public string symbol { get; set; }
+    public OptionType optionType { get; set; }
+    public DateOnly expiration { get; set; }
+    public int strike { get; set; }
+
+    public OptionKey(string symbol, OptionType optionType, DateOnly expiration, int strike)
+    {
+        this.symbol = symbol;
+        this.optionType = optionType;
+        this.expiration = expiration;
+        this.strike = strike;
+    }
+
+    public int CompareTo(OptionKey other)
+    {
+        //if (this.optionType == OptionType.Stock || this.optionType == OptionType.Futures)
+        //    return -1;
+
+        if (other.expiration != this.expiration)
+        {
+            return this.expiration.CompareTo(other.expiration);
+        }
+        else if (other.strike != this.strike)
+        {
+            return this.strike.CompareTo(other.strike);
+        }
+        else if (other.symbol != this.symbol)
+            return other.symbol.CompareTo(this.symbol);
+        else
+            return this.optionType.CompareTo(other.optionType);
+    }
+}
+
 //Financial Instrument Description, Position, Currency, Market Price, Market Value, Average Price, Unrealized P&L, Realized P&L, Liquidate Last, Security Type, Delta Dollars
 //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
 class IBPosition
 {
     public OptionType optionType; // just Put, Call, or Stock...futures are converted to equivalent SPX stock...so is SPY
-    public OptionType actualOptionType;
     public string symbol = ""; // SPX, SPXW, etc
     public int strike = 0;
     public DateOnly expiration = new();
@@ -78,8 +113,8 @@ class IBPosition
 
 static class Program
 {
-    internal const string version = "0.0.1";
-    internal const string version_date = "2021-12-08";
+    internal const string version = "0.0.2";
+    internal const string version_date = "2021-12-17";
     const string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
     internal const string one_directory = @"C:\Users\lel48\OneDrive\Documents\ONEExport\";
 
@@ -104,11 +139,11 @@ static class Program
     static Dictionary<string, int> one_position_columns = new(); // key is column name, value is column index
     static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
 
-    // consolidated ONE positions; key is (OptionType, Expiration, Strike); value is (quantity, List<string>); string is trade id 
-    static Dictionary<(string, OptionType, DateOnly, int), (int, List<string>)> consolidatedOnePositions = new();
-
     // key is (symbol, OptionType, Expiration, Strike); value is quantity
-    static Dictionary<(string, OptionType, DateOnly, int), IBPosition> ibPositions = new();
+    static SortedDictionary<OptionKey, IBPosition> ibPositions = new();
+
+    // consolidated ONE positions; key is (symbol, OptionType, Expiration, Strike); value is (quantity, List<string>); string is trade id 
+    static SortedDictionary<OptionKey, (int, List<string>)> consolidatedOnePositions = new();
 
     static int Main(string[] args)
     {
@@ -117,7 +152,7 @@ static class Program
 
         // calls System.Environment.Exit(-1) if bad command line arguments
         CommandLine.ProcessCommandLineArguments(args);
-        Console.WriteLine($"CompareONEToIB Version {version}, {version_date}. Processing trades for {master_symbol}\n");
+        Console.WriteLine($"CompareONEToIB Version {version}, {version_date}. Processing trades for {master_symbol}");
 
         bool rc = ReadONEData();
         if (!rc)
@@ -167,7 +202,7 @@ static class Program
             }
             if (!file_found)
             {
-                Console.WriteLine("***Error*** No valid OptionNet files found");
+                Console.WriteLine("\n***Error*** No valid OptionNet files found");
                 return false;
             }
 
@@ -201,28 +236,28 @@ static class Program
                 string filename = Path.GetFileName(full_filename);
                 if (!filename.StartsWith(filename_prefix))
                 {
-                    Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename pattern: {filename}");
                     continue;
                 }
                 string datestr = filename[filename_prefix_len..];
                 if (datestr.Length != 12) // yyyymmdd.csv
                 {
-                    Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename pattern: {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr[..4], out int year))
                 {
-                    Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename pattern: {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr.AsSpan(4, 2), out int month))
                 {
-                    Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename pattern: {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr.AsSpan(6, 2), out int day))
                 {
-                    Console.WriteLine($"***Warning*** CSV File found in IB directory whose name does not match proper IB portfolio filename: {filename}");
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename patterne: {filename}");
                     continue;
                 }
 
@@ -237,7 +272,7 @@ static class Program
 
             if (!file_found)
             {
-                Console.WriteLine("***Error*** No valid IB files found");
+                Console.WriteLine("\n***Error*** No valid IB files found");
                 return false;
             }
 
@@ -258,18 +293,18 @@ static class Program
     //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
     static bool ProcessIBFile(string full_filename)
     {
-        Console.WriteLine("Processing IB file: " + full_filename);
+        Console.WriteLine("\nProcessing IB file: " + full_filename);
         string[] lines = File.ReadAllLines(full_filename);
         if (lines.Length < 3)
         {
-            Console.WriteLine("***Error*** IB File must contain at least 3 lines");
+            Console.WriteLine("\n***Error*** IB File must contain at least 3 lines");
             return false;
         }
 
         string line1 = lines[0].Trim();
         if (line1 != "Portfolio")
         {
-            Console.WriteLine("***Error*** First line of IB file must be 'Portfolio'");
+            Console.WriteLine("***\nError*** First line of IB file must be 'Portfolio'");
             return false;
         }
 
@@ -288,7 +323,7 @@ static class Program
         {
             if (!ib_columns.TryGetValue(required_columns[i], out int colnum))
             {
-                Console.WriteLine($"***Error*** IB file header must contain column named {required_columns[i]}");
+                Console.WriteLine($"\n***Error*** IB file header must contain column named {required_columns[i]}");
                 return false;
             }
             index_of_last_required_column = Math.Max(colnum, index_of_last_required_column);
@@ -307,7 +342,7 @@ static class Program
 
             if (fields.Count < index_of_last_required_column + 1)
             {
-                Console.WriteLine($"***Error*** IB position line #{line_index + 1} must have {index_of_last_required_column + 1} fields, not {fields.Count} fields");
+                Console.WriteLine($"\n***Error*** IB position line #{line_index + 1} must have {index_of_last_required_column + 1} fields, not {fields.Count} fields");
                 return false;
             }
 
@@ -400,8 +435,8 @@ static class Program
                 break;
         }
 
-        var key = (ibPosition.symbol, ibPosition.optionType, ibPosition.expiration, ibPosition.strike);
-        if (ibPositions.ContainsKey(key))
+        var ib_key = new OptionKey(ibPosition.symbol, ibPosition.optionType, ibPosition.expiration, ibPosition.strike);
+        if (ibPositions.ContainsKey(ib_key))
         {
             if (ibPosition.optionType == OptionType.Put || ibPosition.optionType == OptionType.Call)
             {
@@ -417,7 +452,7 @@ static class Program
                 return -1;
             }
         }
-        ibPositions.Add((ibPosition.symbol, ibPosition.optionType, ibPosition.expiration, ibPosition.strike), ibPosition);
+        ibPositions.Add(ib_key, ibPosition);
         return 0;
     }
 
@@ -480,53 +515,53 @@ static class Program
     //,,"IB1",296,11/12/2021 11:02:02 AM,Buy,1,SPX,,Stock,SPX Stock, SPX,4660.05,0.005
     static bool ProcessONEFile(string full_filename)
     {
-        Console.WriteLine("Processing ONE file: " + full_filename);
+        Console.WriteLine("\nProcessing ONE file: " + full_filename);
         string[] lines = File.ReadAllLines(full_filename);
         if (lines.Length < 9)
         {
-            Console.WriteLine("***Error*** ONE File must contain at least 9 lines");
+            Console.WriteLine("\n***Error*** ONE File must contain at least 9 lines");
             return false;
         }
 
         string? line1 = lines[0].Trim();
         if (line1 != "ONE Detail Report")
         {
-            Console.WriteLine($"***Error*** First line of ONE file must be 'ONE Detail Report', not: {line1}");
+            Console.WriteLine($"\n***Error*** First line of ONE file must be 'ONE Detail Report', not: {line1}");
             return false;
         }
 
         line1 = lines[1].Trim();
         if (line1.Length != 0)
         {
-            Console.WriteLine($"***Error*** Second line of ONE must be blank, not: {line1}");
+            Console.WriteLine($"\n***Error*** Second line of ONE must be blank, not: {line1}");
             return false;
         }
 
         line1 = lines[2].Trim();
         if (!line1.StartsWith("Date/Time:"))
         {
-            Console.WriteLine($"***Error*** Third line of ONE file must start with 'Date/Time:', not: {line1}");
+            Console.WriteLine($"\n***Error*** Third line of ONE file must start with 'Date/Time:', not: {line1}");
             return false;
         }
 
         line1 = lines[3].Trim();
         if (!line1.StartsWith("Filter: [Account]"))
         {
-            Console.WriteLine($"***Error*** Fourth line of ONE file must start with 'Filter: [Account]', not: {line1}");
+            Console.WriteLine($"\n***Error*** Fourth line of ONE file must start with 'Filter: [Account]', not: {line1}");
             return false;
         }
 
         line1 = lines[4].Trim();
         if (!line1.StartsWith("Grouping: Account"))
         {
-            Console.WriteLine($"***Error*** Fifth line of ONE file must start with 'Grouping: Account', not: {line1}");
+            Console.WriteLine($"\n***Error*** Fifth line of ONE file must start with 'Grouping: Account', not: {line1}");
             return false;
         }
 
         line1 = lines[5].Trim();
         if (line1.Length != 0)
         {
-            Console.WriteLine($"***Error*** Sixth line of ONE must be blank, not: {line1}");
+            Console.WriteLine($"\n***Error*** Sixth line of ONE must be blank, not: {line1}");
             return false;
         }
 
@@ -545,7 +580,7 @@ static class Program
         {
             if (!one_trade_columns.TryGetValue(trade_required_columns[i], out int colnum))
             {
-                Console.WriteLine($"***Error*** ONE trade line header must contain column named {trade_required_columns[i]}");
+                Console.WriteLine($"\n***Error*** ONE trade line header must contain column named {trade_required_columns[i]}");
                 return false;
             }
             index_of_last_required_trade_column = Math.Max(colnum, index_of_last_required_trade_column);
@@ -566,7 +601,7 @@ static class Program
         {
             if (!one_position_columns.TryGetValue(position_required_columns[i], out int colnum))
             {
-                Console.WriteLine($"***Error*** ONE position line header must contain column named {position_required_columns[i]}");
+                Console.WriteLine($"\n***Error*** ONE position line header must contain column named {position_required_columns[i]}");
                 return false;
             }
             index_of_last_required_position_column = Math.Max(colnum, index_of_last_required_position_column);
@@ -576,7 +611,7 @@ static class Program
         one_account = lines[8].Trim();
         if (one_account.Length == 0)
         {
-            Console.WriteLine($"***Error*** Ninth line of ONE must be ONE account name, not blank");
+            Console.WriteLine($"\n***Error*** Ninth line of ONE must be ONE account name, not blank");
             return false;
         }
 
@@ -607,7 +642,7 @@ static class Program
 
                 if (fields.Count < index_of_last_required_trade_column+1)
                 {
-                    Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_trade_column + 1} fields, not {fields.Count} fields");
+                    Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_trade_column + 1} fields, not {fields.Count} fields");
                     return false;
                 }
 
@@ -622,13 +657,13 @@ static class Program
                 // this is position line
                 if (curOneTrade == null)
                 {
-                    Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} comes before Trade line.");
+                    Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} comes before Trade line.");
                     return false;
                 }
 
                 if (fields.Count < index_of_last_required_position_column + 1)
                 {
-                    Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_position_column + 1} fields, not {fields.Count} fields");
+                    Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_position_column + 1} fields, not {fields.Count} fields");
                     return false;
                 }
 
@@ -637,7 +672,7 @@ static class Program
                     return false;
 
                 // now add option position to consolidated positions dictionary for trade; remove existing position if quantity now 0
-                var key = (position.symbol, position.optionType, position.expiration, position.strike);
+                var key = new OptionKey(position.symbol, position.optionType, position.expiration, position.strike);
                 if (curOneTrade.positions.ContainsKey(key))
                 {
                     curOneTrade.positions[key] += position.quantity;
@@ -684,21 +719,21 @@ static class Program
         oneTrade.account = fields[one_trade_columns["Account"]];
         if (one_account != oneTrade.account)
         {
-            Console.WriteLine($"***Error*** In ONE Trade line #{line_index + 1}, account field: {oneTrade.account} is not the same as line 9 of file: {one_account}");
+            Console.WriteLine($"\n***Error*** In ONE Trade line #{line_index + 1}, account field: {oneTrade.account} is not the same as line 9 of file: {one_account}");
             return null;
         }
 
         int field_index = one_trade_columns["Expiration"];
         if (!DateOnly.TryParse(fields[field_index], out oneTrade.expiration))
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid date field: {fields[field_index]}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid date field: {fields[field_index]}");
             return null;
         }
 
         oneTrade.trade_id = fields[one_trade_columns["TradeId"]];
         if (oneTrade.trade_id.Length == 0)
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has empty trade id field");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has empty trade id field");
             return null;
         }
 
@@ -707,7 +742,7 @@ static class Program
         field_index = one_trade_columns["Underlying"];
         if (master_symbol != fields[field_index])
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} is for symbol other than {master_symbol}: {fields[field_index]}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} is for symbol other than {master_symbol}: {fields[field_index]}");
             return null;
         }
 
@@ -718,14 +753,14 @@ static class Program
             oneTrade.status = TradeStatus.Closed;
         else
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid trade status field: {status}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid trade status field: {status}");
             return null;
         }
 
         string open_dt = fields[one_trade_columns["OpenDate"]];
         if (!DateTime.TryParse(open_dt, out oneTrade.open_dt))
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid date field: {open_dt}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid date field: {open_dt}");
             return null;
         }
 
@@ -734,7 +769,7 @@ static class Program
             string close_dt = fields[one_trade_columns["CloseDate"]];
             if (!DateTime.TryParse(close_dt, out oneTrade.close_dt))
             {
-                Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid date field: {close_dt}");
+                Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid date field: {close_dt}");
                 return null;
             }
         }
@@ -742,20 +777,20 @@ static class Program
         string dte = fields[one_trade_columns["DaysToExpiration"]]; 
         if (!int.TryParse(dte, out oneTrade.dte))
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid dte field: {dte}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid dte field: {dte}");
             return null;
         }
 
         string dit = fields[one_trade_columns["DaysInTrade"]];
         if (!int.TryParse(dit, out oneTrade.dit))
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid dit field: {dit}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid dit field: {dit}");
             return null;
         }
 
         if (oneTrades.ContainsKey(oneTrade.trade_id))
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in ONE file: duplicate trade id: {oneTrade.trade_id}");
+            Console.WriteLine($"\n***Error*** in #{line_index + 1} in ONE file: duplicate trade id: {oneTrade.trade_id}");
             return null;
         }
         oneTrades.Add(oneTrade.trade_id, oneTrade);
@@ -772,14 +807,14 @@ static class Program
         string account = fields[one_position_columns["Account"]];
         if (account != one_account)
         {
-            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} has account: {account} that is different from trade account: {one_account}");
+            Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} has account: {account} that is different from trade account: {one_account}");
             return null;
         }
 
         string tid = fields[one_position_columns["TradeId"]];
         if (tid != trade_id)
         {
-            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} has trade id: {tid} that is different from trade id in trade line: {trade_id}");
+            Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} has trade id: {tid} that is different from trade id in trade line: {trade_id}");
             return null;
         }
 
@@ -790,7 +825,7 @@ static class Program
         string open_dt = fields[one_position_columns["Date"]];
         if (!DateTime.TryParse(open_dt, out position.open_dt))
         {
-            Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} has invalid open date field: {open_dt}");
+            Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} has invalid open date field: {open_dt}");
             return null;
         }
 
@@ -803,14 +838,14 @@ static class Program
             case "Sell":
                 quantity_sign = -1; break;
             default:
-                Console.WriteLine($"***Error*** ONE Position line #{line_index + 1} has invalid transaction type (must be Buy or Sell): {transaction}");
+                Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} has invalid transaction type (must be Buy or Sell): {transaction}");
                 return null;
         }
 
         string qty = fields[one_position_columns["Qty"]];
         if (!int.TryParse(qty, out position.quantity))
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid quantity field: {qty}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid quantity field: {qty}");
             return null;
         }
         position.quantity *= quantity_sign;
@@ -833,7 +868,7 @@ static class Program
                         position.expiration = expiry;
                     else
                     {
-                        Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has discrepency between date in Symbol field {position.expiration} and date in Expiry field {expiry}");
+                        Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has discrepency between date in Symbol field {position.expiration} and date in Expiry field {expiry}");
                         return null;
                     }
                 }
@@ -848,14 +883,14 @@ static class Program
         }
         else
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid type field (Must be Put, Call, or Stock): {type}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid type field (Must be Put, Call, or Stock): {type}");
             return null;
         }
 
         string open_price = fields[one_position_columns["Price"]]; 
         if (!float.TryParse(open_price, out position.open_price))
         {
-            Console.WriteLine($"***Error*** ONE Trade line #{line_index + 1} has invalid price field: {open_price}");
+            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid price field: {open_price}");
             return null;
         }
 
@@ -873,18 +908,18 @@ static class Program
         // go through each ONE position and find it's associated IB Position
         //static Dictionary<(string, OptionType, DateOnly, int), (int, List<string>)> onePositions = new();
         // ((string symbol, OptionType type, DateOnly expiration, int strike), (int quantity, List<string> trades))
-        foreach (((string symbol, OptionType type, DateOnly expiration, int strike), (int one_quantity, List<string> one_trade_ids)) in consolidatedOnePositions)
+        foreach ((OptionKey ib_key, (int one_quantity, List<string> one_trade_ids)) in consolidatedOnePositions)
         {
-            if (!ibPositions.TryGetValue((symbol, type, expiration, strike), out IBPosition? ib_position))
+            if (!ibPositions.TryGetValue(ib_key, out IBPosition? ib_position))
             {
-                switch (type)
+                switch (ib_key.optionType)
                 {
                     case OptionType.Stock:
                         // an SPX stock position in ONE could be satisfied by an IB position in SPY, ES, or MES, wher the expiration of ES or MES could be anything
                         // because we save IB positions using a key with multiple values, we have to search through all IB positions to find possible resolutions to this
-                        foreach ((string test_symbol, OptionType test_type, DateOnly test_expiration, int test_strike) in ibPositions.Keys)
+                        foreach (OptionKey one_key in ibPositions.Keys)
                         {
-                            switch (test_symbol)
+                            switch (one_key.symbol)
                             {
                                 case "SPY":
                                     break;
@@ -896,45 +931,30 @@ static class Program
                             }
                         }
                         if (one_trade_ids.Count == 1)
-                            Console.WriteLine($"***Error*** ONE has a stock position in {symbol} of {one_quantity} shares, in trade {one_trade_ids[0]}, with no matching position in IB");
+                            Console.WriteLine($"\n***Error*** ONE has a stock position in {ib_key.symbol} of {one_quantity} shares, in trade {one_trade_ids[0]}, with no matching position in IB");
                         else
                         {
-                            Console.WriteLine($"***Error*** ONE has a stock position in {symbol} of {one_quantity} shares, with no matching position in IB in the following ONE trades:");
+                            Console.WriteLine($"\n***Error*** ONE has a stock position in {ib_key.symbol} of {one_quantity} shares, with no matching position in IB in the following ONE trades:");
                             foreach (string one_trade_id in one_trade_ids)
                             {
                                 ONETrade one_trade = oneTrades[one_trade_id];
-                                int missing_quantity = one_trade.positions[(symbol, OptionType.Stock, new DateOnly(1, 1, 1), 0)];
+                                int missing_quantity = one_trade.positions[ib_key];
                                 Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} shares");
                             }
                         }
                         break;
-#if false // ONE doesn't have futures positions
-                    case OptionType.Futures:
-                        if (one_trade_ids.Count == 1)
-                            Console.WriteLine($"***Error*** ONE has a futures position in {symbol} {expiration} of {one_quantity} contracts, in trade {one_trade_ids[0]}, with no matching position in IB");
-                        else
-                        {
-                            Console.WriteLine($"***Error*** ONE has a futures position in {symbol} {expiration} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
-                            foreach (string one_trade_id in one_trade_ids)
-                            {
-                                ONETrade one_trade = oneTrades[one_trade_id];
-                                int missing_quantity = one_trade.positions[(symbol, OptionType.Futures, expiration, 0)];
-                                Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} contracts");
-                            }
-                        }
-                        break;
-#endif
+
                     case OptionType.Call:
                     case OptionType.Put:
                         if (one_trade_ids.Count == 1)
-                            Console.WriteLine($"***Error*** ONE has an option position in {symbol} {type} {expiration} {strike} of {one_quantity} contracts, in trade {one_trade_ids[0]}, with no matching position in IB:");
+                            Console.WriteLine($"\n***Error*** ONE has an option position in {ib_key.symbol} {ib_key.optionType} {ib_key.expiration} {ib_key.strike} of {one_quantity} contracts, in trade {one_trade_ids[0]}, with no matching position in IB:");
                         else
                         {
-                            Console.WriteLine($"***Error*** ONE has an option position in {symbol} {type} {expiration} {strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
+                            Console.WriteLine($"\n***Error*** ONE has an option position in {ib_key.symbol} {ib_key.optionType} {ib_key.expiration} {ib_key.strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
                             foreach (string one_trade_id in one_trade_ids)
                             {
                                 ONETrade one_trade = oneTrades[one_trade_id];
-                                int missing_quantity = one_trade.positions[(symbol, OptionType.Futures, expiration, strike)];
+                                int missing_quantity = one_trade.positions[ib_key];
                                 Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} contracts");
                             }
                         }
@@ -958,13 +978,13 @@ static class Program
             {
                 if (position.one_quantity == 0)
                 {
-                    Console.WriteLine($"***Error*** IB has a {position.optionType} position with no matching position in ONE");
+                    Console.WriteLine($"\n***Error*** IB has a {position.optionType} position with no matching position in ONE");
                     DisplayIBPosition(position);
                     Console.WriteLine();
                 }
                 else
                 {
-                    Console.WriteLine($"***Error*** IB quantity {position.quantity} does not match total ONE quantity {position.one_quantity} for IB position:");
+                    Console.WriteLine($"\n***Error*** IB quantity {position.quantity} does not match total ONE quantity {position.one_quantity} for IB position:");
                     DisplayIBPosition(position);
                     Console.WriteLine();
                 }
@@ -1068,17 +1088,22 @@ static class Program
     //static Dictionary<(string, OptionType, DateOnly, int), (int, List<string>)> consolidatedOnePositions = new();
     static void DisplayONEPositions()
     {
-        Console.WriteLine("\nONE Positions:");
-        foreach (((string symbol, OptionType optionType, DateOnly expiration, int strike), (int quantity, List<string> trades)) in consolidatedOnePositions)
+        Console.WriteLine($"\nConsolidated ONE Positions for {master_symbol}:");
+        foreach ((OptionKey one_key, (int quantity, List<string> trades)) in consolidatedOnePositions)
         {
-            switch (optionType)
+            string trade_str = "trade";
+            if (trades.Count > 1)
+                trade_str = "trades";
+
+            switch (one_key.optionType)
             {
                 case OptionType.Stock:
-                    Console.WriteLine($"{symbol} {optionType}: quantity = {quantity}");
+                    Console.WriteLine($"{one_key.symbol} {one_key.optionType}: quantity={quantity}, {trade_str}={string.Join(",", trades)}");
                     break;
                 case OptionType.Call:
                 case OptionType.Put:
-                    Console.WriteLine($"{symbol} {optionType}: expiration = {expiration}, strike = {strike}, quantity = {quantity}");
+                    // create trades list
+                    Console.WriteLine($"{one_key.symbol} {one_key.optionType}: expiration={one_key.expiration}, strike={one_key.strike}, quantity={quantity}, {trade_str}={string.Join(",", trades)}");
                     break;
             }
         }
@@ -1087,7 +1112,7 @@ static class Program
 
     static void DisplayIBPositions()
     {
-        Console.WriteLine("\nIB Positions:");
+        Console.WriteLine($"IB Positions related to {master_symbol}:");
         foreach (IBPosition position in ibPositions.Values)
             DisplayIBPosition(position);
         Console.WriteLine();
