@@ -72,8 +72,10 @@ public class OptionKey : IComparable<OptionKey>
         this.Strike = strike;
     }
 
-    public int CompareTo(OptionKey other)
+    public int CompareTo(OptionKey? other)
     {
+        if (other == null)
+            return 0;
         //if (this.optionType == OptionType.Stock || this.optionType == OptionType.Futures)
         //    return -1;
 
