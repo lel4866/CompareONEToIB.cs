@@ -75,9 +75,19 @@ public class OptionKey : IComparable<OptionKey>
     public int CompareTo(OptionKey? other)
     {
         if (other == null)
-            return 0;
-        //if (this.optionType == OptionType.Stock || this.optionType == OptionType.Futures)
-        //    return -1;
+            return 1;
+
+        bool thisIsStock = OptionType == OptionType.Stock || OptionType == OptionType.Futures;
+        bool otherIsStock = other.OptionType == OptionType.Stock || other.OptionType == OptionType.Futures;
+        if (thisIsStock)
+        {
+            if (otherIsStock)
+                return Symbol.CompareTo(other.Symbol);
+            return -1;
+        }
+
+        if (otherIsStock)
+            return 1;
 
         if (other.Expiration != this.Expiration)
         {
