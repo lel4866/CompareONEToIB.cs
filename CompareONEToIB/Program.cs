@@ -77,30 +77,54 @@ public class OptionKey : IComparable<OptionKey>
         if (other == null)
             return 1;
 
-        bool thisIsStock = OptionType == OptionType.Stock || OptionType == OptionType.Futures;
-        bool otherIsStock = other.OptionType == OptionType.Stock || other.OptionType == OptionType.Futures;
-        if (thisIsStock)
+        bool thisIsOption = OptionType == OptionType.Put || OptionType == OptionType.Call;
+        bool otherIsOption = other.OptionType == OptionType.Put || other.OptionType == OptionType.Call;
+        if (!thisIsOption)
         {
-            if (otherIsStock)
+            if (otherIsOption)
+                return -1; // this is stock, other is option: stocks/futures come before options
+
+            // this and other are both Stocks/Futures: stocks come before futures, then symbol, then, if future, expiration
+            if (OptionType == OptionType.Stock)
+            {
+                if (other.OptionType == OptionType.Futures)
+                    return -1; // stocks come before futures
+
+                // both this and other are stocks...sort by symbol
                 return Symbol.CompareTo(other.Symbol);
-            return -1;
+            }
+
+            // this is futures
+            if (other.OptionType == OptionType.Stock)
+                return 1; // this is futures, other is stock: futures come after stocks
+
+            // this and other are both futures..sort by symbol then expiration
+            if (Symbol != other.Symbol)
+                return Symbol.CompareTo(other.Symbol);
+
+            return Expiration.CompareTo(other.Expiration);
         }
 
-        if (otherIsStock)
-            return 1;
+        // this is an option
+
+        if (!otherIsOption)
+            return 1; // stocks/futures come before options
+
+        // both this and other are options
+        // sort by expiration, then strike, then symbol (like SPX, SPXW), finally type (put/Call)
 
         if (other.Expiration != this.Expiration)
         {
-            return this.Expiration.CompareTo(other.Expiration);
+            return Expiration.CompareTo(other.Expiration);
         }
-        else if (other.Strike != this.Strike)
+        else if (other.Strike != Strike)
         {
-            return this.Strike.CompareTo(other.Strike);
+            return Strike.CompareTo(other.Strike);
         }
-        else if (other.Symbol != this.Symbol)
-            return other.Symbol.CompareTo(this.Symbol);
-        else
-            return this.OptionType.CompareTo(other.OptionType);
+        else if (other.Symbol != Symbol)
+            return other.Symbol.CompareTo(Symbol);
+        else // this 
+            return OptionType.CompareTo(other.OptionType);
     }
 }
 
