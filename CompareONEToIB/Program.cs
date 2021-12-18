@@ -59,17 +59,17 @@ class ONEPosition
 // used to sort entriesd in consolidatedOnePositions SortedDictionary
 public class OptionKey : IComparable<OptionKey>
 {
-    public string symbol { get; set; }
-    public OptionType optionType { get; set; }
-    public DateOnly expiration { get; set; }
-    public int strike { get; set; }
+    public string Symbol { get; set; }
+    public OptionType OptionType { get; set; }
+    public DateOnly Expiration { get; set; }
+    public int Strike { get; set; }
 
     public OptionKey(string symbol, OptionType optionType, DateOnly expiration, int strike)
     {
-        this.symbol = symbol;
-        this.optionType = optionType;
-        this.expiration = expiration;
-        this.strike = strike;
+        this.Symbol = symbol;
+        this.OptionType = optionType;
+        this.Expiration = expiration;
+        this.Strike = strike;
     }
 
     public int CompareTo(OptionKey other)
@@ -77,18 +77,18 @@ public class OptionKey : IComparable<OptionKey>
         //if (this.optionType == OptionType.Stock || this.optionType == OptionType.Futures)
         //    return -1;
 
-        if (other.expiration != this.expiration)
+        if (other.Expiration != this.Expiration)
         {
-            return this.expiration.CompareTo(other.expiration);
+            return this.Expiration.CompareTo(other.Expiration);
         }
-        else if (other.strike != this.strike)
+        else if (other.Strike != this.Strike)
         {
-            return this.strike.CompareTo(other.strike);
+            return this.Strike.CompareTo(other.Strike);
         }
-        else if (other.symbol != this.symbol)
-            return other.symbol.CompareTo(this.symbol);
+        else if (other.Symbol != this.Symbol)
+            return other.Symbol.CompareTo(this.Symbol);
         else
-            return this.optionType.CompareTo(other.optionType);
+            return this.OptionType.CompareTo(other.OptionType);
     }
 }
 
@@ -630,6 +630,8 @@ static class Program
                 continue;
             }
             bool rc = ParseCSVLine(line, out List<string> fields);
+            if (!rc)
+                return false;
 
             string account1 = fields[1].Trim();
             if (account1.Length != 0)
@@ -830,7 +832,7 @@ static class Program
         }
 
         string transaction = fields[one_position_columns["Transaction"]];
-        int quantity_sign = 0;
+        int quantity_sign;
         switch (transaction)
         {
             case "Buy":
@@ -912,14 +914,14 @@ static class Program
         {
             if (!ibPositions.TryGetValue(ib_key, out IBPosition? ib_position))
             {
-                switch (ib_key.optionType)
+                switch (ib_key.OptionType)
                 {
                     case OptionType.Stock:
                         // an SPX stock position in ONE could be satisfied by an IB position in SPY, ES, or MES, wher the expiration of ES or MES could be anything
                         // because we save IB positions using a key with multiple values, we have to search through all IB positions to find possible resolutions to this
                         foreach (OptionKey one_key in ibPositions.Keys)
                         {
-                            switch (one_key.symbol)
+                            switch (one_key.Symbol)
                             {
                                 case "SPY":
                                     break;
@@ -931,10 +933,10 @@ static class Program
                             }
                         }
                         if (one_trade_ids.Count == 1)
-                            Console.WriteLine($"\n***Error*** ONE has a stock position in {ib_key.symbol} of {one_quantity} shares, in trade {one_trade_ids[0]}, with no matching position in IB");
+                            Console.WriteLine($"\n***Error*** ONE has a stock position in {ib_key.Symbol} of {one_quantity} shares, in trade {one_trade_ids[0]}, with no matching position in IB");
                         else
                         {
-                            Console.WriteLine($"\n***Error*** ONE has a stock position in {ib_key.symbol} of {one_quantity} shares, with no matching position in IB in the following ONE trades:");
+                            Console.WriteLine($"\n***Error*** ONE has a stock position in {ib_key.Symbol} of {one_quantity} shares, with no matching position in IB in the following ONE trades:");
                             foreach (string one_trade_id in one_trade_ids)
                             {
                                 ONETrade one_trade = oneTrades[one_trade_id];
@@ -947,10 +949,10 @@ static class Program
                     case OptionType.Call:
                     case OptionType.Put:
                         if (one_trade_ids.Count == 1)
-                            Console.WriteLine($"\n***Error*** ONE has an option position in {ib_key.symbol} {ib_key.optionType} {ib_key.expiration} {ib_key.strike} of {one_quantity} contracts, in trade {one_trade_ids[0]}, with no matching position in IB:");
+                            Console.WriteLine($"\n***Error*** ONE has an option position in {ib_key.Symbol} {ib_key.OptionType} {ib_key.Expiration} {ib_key.Strike} of {one_quantity} contracts, in trade {one_trade_ids[0]}, with no matching position in IB:");
                         else
                         {
-                            Console.WriteLine($"\n***Error*** ONE has an option position in {ib_key.symbol} {ib_key.optionType} {ib_key.expiration} {ib_key.strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
+                            Console.WriteLine($"\n***Error*** ONE has an option position in {ib_key.Symbol} {ib_key.OptionType} {ib_key.Expiration} {ib_key.Strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
                             foreach (string one_trade_id in one_trade_ids)
                             {
                                 ONETrade one_trade = oneTrades[one_trade_id];
@@ -1095,15 +1097,15 @@ static class Program
             if (trades.Count > 1)
                 trade_str = "trades";
 
-            switch (one_key.optionType)
+            switch (one_key.OptionType)
             {
                 case OptionType.Stock:
-                    Console.WriteLine($"{one_key.symbol} {one_key.optionType}: quantity={quantity}, {trade_str}={string.Join(",", trades)}");
+                    Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: quantity={quantity}, {trade_str}={string.Join(",", trades)}");
                     break;
                 case OptionType.Call:
                 case OptionType.Put:
                     // create trades list
-                    Console.WriteLine($"{one_key.symbol} {one_key.optionType}: expiration={one_key.expiration}, strike={one_key.strike}, quantity={quantity}, {trade_str}={string.Join(",", trades)}");
+                    Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: expiration={one_key.Expiration}, strike={one_key.Strike}, quantity={quantity}, {trade_str}={string.Join(",", trades)}");
                     break;
             }
         }
