@@ -838,8 +838,17 @@ static class Program
         }
     }
 
+    // remove closed trades from ONE_trades
     static void RemoveClosedTrades()
     {
+        List<string> closedTradeIds = new();
+        foreach (ONETrade one_trade in ONE_trades.Values)
+        {
+            if (one_trade.status == TradeStatus.Closed)
+                closedTradeIds.Add(one_trade.trade_id);
+        }
+        foreach (string id in closedTradeIds)
+            ONE_trades.Remove(id);
     }
 
     // ",Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc"
@@ -1155,24 +1164,6 @@ static class Program
             Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade {one_trade_ids.First()}, while IB contains {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
         else
             Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trades {string.Join(",", one_trade_ids)}, while IB contains {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
-
-        // todo: list ONE trades with index positoon, IB stock/futures positions
-#if false
-        else
-        {
-            if (ib_stock_or_futures_quantity == 0)
-                Console.WriteLine($"\n***Error*** ONE has an index position in {one_key.Symbol} of {one_quantity} shares in the following ONE trades, while IB contains no matching positions:");
-            else
-                Console.WriteLine($"\n***Error*** ONE has an index position in {one_key.Symbol} of {one_quantity} shares in the following ONE trades, while IB contains {ib_stock_or_futures_quantity} equivalent shares:");
-
-            foreach (string one_trade_id in one_trade_ids)
-            {
-                ONETrade one_trade = oneTrades[one_trade_id];
-                int missing_quantity = one_trade.positions[one_key];
-                Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} index shares");
-            }
-        }
-#endif
     }
 
     const char delimiter = ',';
