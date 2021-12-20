@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using CompareONEToIB;
 
 namespace CompareOneToIB;
 
+// todo: rename OptionType to SecurityType
 public enum OptionType
 {
     Put,
@@ -38,6 +40,7 @@ class ONETrade
     //public float pnl;
 
     // these are consolidated positions for trade: key is (symbol, OptionType, Expiration, Strike); value is quantity
+    // so Dictionary contains no keys with quantity == 0
     public Dictionary<OptionKey, int> positions = new();
 }
 
@@ -56,7 +59,8 @@ class ONEPosition
     public float open_price;
 }
 
-// used to sort entriesd in consolidatedOnePositions SortedDictionary
+// used to sort/compare entries in consolidatedOnePositions SortedDictionary
+// todo: this really isn't just an option key; it can be a stock/futures key. Should rename to SecurityKey
 public class OptionKey : IComparable<OptionKey>
 {
     public string Symbol { get; set; }
@@ -72,6 +76,21 @@ public class OptionKey : IComparable<OptionKey>
         this.Strike = strike;
     }
 
+    public override int GetHashCode()
+    {
+        return Symbol.GetHashCode() ^ OptionType.GetHashCode() ^ Expiration.GetHashCode() ^ Strike.GetHashCode();
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is OptionKey)
+        {
+            OptionKey other = (OptionKey)obj;
+            return other != null && Symbol == other.Symbol && OptionType == other.OptionType && Expiration == other.Expiration && Strike == other.Strike;
+        }
+        return false;
+    }
+
     public int CompareTo(OptionKey? other)
     {
         if (other == null)
@@ -81,20 +100,25 @@ public class OptionKey : IComparable<OptionKey>
         bool otherIsOption = other.OptionType == OptionType.Put || other.OptionType == OptionType.Call;
         if (!thisIsOption)
         {
+            // this is stock/future
+
             if (otherIsOption)
-                return -1; // this is stock, other is option: stocks/futures come before options
+                return -1; // this is stock/future, other is option: stocks/futures come before options
 
             // this and other are both Stocks/Futures: stocks come before futures, then symbol, then, if future, expiration
+
             if (OptionType == OptionType.Stock)
             {
                 if (other.OptionType == OptionType.Futures)
                     return -1; // stocks come before futures
 
-                // both this and other are stocks...sort by symbol
-                return Symbol.CompareTo(other.Symbol);
+                // this and other are both stocks...sort by symbol
+                var xxx = Symbol.CompareTo(other.Symbol);
+                return xxx;
             }
 
             // this is futures
+
             if (other.OptionType == OptionType.Stock)
                 return 1; // this is futures, other is stock: futures come after stocks
 
@@ -108,19 +132,14 @@ public class OptionKey : IComparable<OptionKey>
         // this is an option
 
         if (!otherIsOption)
-            return 1; // stocks/futures come before options
+            return 1; // other is stock/future; stocks/futures come before options
 
-        // both this and other are options
-        // sort by expiration, then strike, then symbol (like SPX, SPXW), finally type (put/Call)
+        // this and other are both options; sort by expiration, then strike, then symbol (like SPX, SPXW), finally type (put/Call)
 
         if (other.Expiration != this.Expiration)
-        {
             return Expiration.CompareTo(other.Expiration);
-        }
         else if (other.Strike != Strike)
-        {
             return Strike.CompareTo(other.Strike);
-        }
         else if (other.Symbol != Symbol)
             return other.Symbol.CompareTo(Symbol);
         else // this 
@@ -144,7 +163,7 @@ class IBPosition
 
     // used only during reconciliation with ONE positions
     public int one_quantity = 0;
-    public List<string> oneTrades = new();
+    public HashSet<string> oneTrades = new();
 }
 
 static class Program
@@ -178,8 +197,11 @@ static class Program
     // key is (symbol, OptionType, Expiration, Strike); value is quantity
     static SortedDictionary<OptionKey, IBPosition> ibPositions = new();
 
-    // consolidated ONE positions; key is (symbol, OptionType, Expiration, Strike); value is (quantity, List<string>); string is trade id 
-    static SortedDictionary<OptionKey, (int, List<string>)> consolidatedOnePositions = new();
+    // dictionry of ONE trades with key of trade id
+    static Dictionary<string, ONETrade> ONE_trades = new();
+
+    // consolidated ONE positions; key is (symbol, OptionType, Expiration, Strike); value is (quantity, HashSet<string>); string is trade id 
+    static SortedDictionary<OptionKey, (int, HashSet<string>)> consolidatedOnePositions = new();
 
     static int Main(string[] args)
     {
@@ -655,8 +677,6 @@ static class Program
         ONETrade? curOneTrade = null;
         for (int line_index = 9; line_index < lines.Length; line_index++)
         {
-            // fields[0] must be blank;
-            // if fields[1] is blank, this is a position line, otherwise it is a trade line
             string line = lines[line_index].Trim();
 
             // trades (except for the first one) are separated by blanks
@@ -668,6 +688,7 @@ static class Program
             bool rc = ParseCSVLine(line, out List<string> fields);
             if (!rc)
                 return false;
+            // fields[0] must be blank; but, I don't check here yet
 
             string account1 = fields[1].Trim();
             if (account1.Length != 0)
@@ -678,73 +699,137 @@ static class Program
                     // do whatever final stuff we need to do when we've parsed all position lines for trade
                 }
 
-                if (fields.Count < index_of_last_required_trade_column+1)
+                if (fields.Count < index_of_last_required_trade_column + 1)
                 {
                     Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_trade_column + 1} fields, not {fields.Count} fields");
                     return false;
                 }
 
-                // start new trade
+                // start new trade - save it in trades Dictionary
                 curOneTrade = ParseONETradeLine(line_index, fields);
                 if (curOneTrade == null)
                     return false;
+                ONE_trades.Add(curOneTrade.trade_id, curOneTrade);
                 continue;
+            }
+
+            // this is position line
+            if (curOneTrade == null)
+            {
+                Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} comes before Trade line.");
+                return false;
+            }
+
+            if (fields.Count < index_of_last_required_position_column + 1)
+            {
+                Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_position_column + 1} fields, not {fields.Count} fields");
+                return false;
+            }
+
+            ONEPosition? position = ParseONEPositionLine(line_index, fields, curOneTrade.trade_id);
+            if (position == null)
+                return false;
+
+            // now add position to consolidated positions dictionary for trade; remove existing position if quantity now 0
+            var key = new OptionKey(position.symbol, position.optionType, position.expiration, position.strike);
+
+            // within trade, we consolidate individual trades to obtain an overall current position
+            if (curOneTrade.positions.ContainsKey(key))
+            {
+                curOneTrade.positions[key] += position.quantity;
+
+                // remove position if it now has 0 quantity
+                if (curOneTrade.positions[key] == 0)
+                    curOneTrade.positions.Remove(key);
             }
             else
             {
-                // this is position line
-                if (curOneTrade == null)
-                {
-                    Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} comes before Trade line.");
-                    return false;
-                }
-
-                if (fields.Count < index_of_last_required_position_column + 1)
-                {
-                    Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_position_column + 1} fields, not {fields.Count} fields");
-                    return false;
-                }
-
-                ONEPosition? position = ParseONEPositionLine(line_index, fields, curOneTrade.trade_id);
-                if (position == null)
-                    return false;
-
-                // now add option position to consolidated positions dictionary for trade; remove existing position if quantity now 0
-                var key = new OptionKey(position.symbol, position.optionType, position.expiration, position.strike);
-                if (curOneTrade.positions.ContainsKey(key))
-                {
-                    curOneTrade.positions[key] += position.quantity;
-                    if (curOneTrade.positions[key] == 0)
-                        curOneTrade.positions.Remove(key);
-                }
-                else
-                {
-                    Debug.Assert(position.quantity != 0);
-                    curOneTrade.positions.Add(key, position.quantity);
-                }
-
-                // now add option position to global consolidated positions dictionary; remove existing position if quantity now 0
-                //static Dictionary<(string, OptionType, DateOnly, int), (int, List<string>)> onePositions = new();
-                if (consolidatedOnePositions.ContainsKey(key))
-                {
-                    (int quantity, List<string> trades) = consolidatedOnePositions[key];
-                    int new_quantity = quantity + position.quantity;
+                Debug.Assert(position.quantity != 0); // todo: should be error message
+                curOneTrade.positions.Add(key, position.quantity);
+            }
+#if false
+            // now add option position to global consolidated ONE positions dictionary; remove existing position if quantity now 0
+            //static Dictionary<(string, OptionType, DateOnly, int), (int, HashSet<string>)> onePositions = new();
+            if (consolidatedOnePositions.ContainsKey(key))
+            {
+                (int quantity, HashSet<string> trade_ids) = consolidatedOnePositions[key];
+                int new_quantity = quantity + position.quantity;
+#if false
                     if (new_quantity != 0)
                         consolidatedOnePositions[key] = (new_quantity, trades);
                     else
                         consolidatedOnePositions.Remove(key);
+#else
+                trade_ids.Add(curOneTrade.trade_id);
+                consolidatedOnePositions[key] = (new_quantity, trade_ids);
+#endif
+            }
+            else
+            {
+                Debug.Assert(position.quantity != 0); // todo: should be error message
+                HashSet<string> trade_ids = new();
+                trade_ids.Add(curOneTrade.trade_id);
+                consolidatedOnePositions.Add(key, (position.quantity, trade_ids));
+            }
+#endif
+        }
+
+        DisplayTrades();
+
+        CreateConsolidateOnePositions();
+        return true;
+    }
+
+    // go through each ONE trade in ONE_trades and create a consolidated ONE position
+    // right now, this could create ONE positions with 0 quantity if trades "step on strikes"
+    static void CreateConsolidateOnePositions()
+    {
+        // debug until we decide to use this 
+        consolidatedOnePositions.Clear();
+
+        foreach (ONETrade one_trade in ONE_trades.Values)
+        {
+            foreach ((OptionKey key, int quantity) in one_trade.positions)
+            {
+                Debug.Assert(quantity != 0);
+                if (!consolidatedOnePositions.ContainsKey(key))
+                {
+                    HashSet<string> trade_ids = new();
+                    trade_ids.Add(one_trade.trade_id);
+                    consolidatedOnePositions.Add(key, (quantity, trade_ids));
                 }
                 else
                 {
-                    Debug.Assert(position.quantity != 0);
-                    List<string> trade_ids = new();
-                    trade_ids.Add(curOneTrade.trade_id);
-                    consolidatedOnePositions.Add(key, (position.quantity, trade_ids));
+                    HashSet<string> trade_ids = consolidatedOnePositions[key].Item2;
+                    Debug.Assert(!trade_ids.Contains(one_trade.trade_id));
+                    trade_ids.Add(one_trade.trade_id);
                 }
             }
         }
+    }
 
-        return true;
+    static void DisplayTrades()
+    {
+        foreach (ONETrade one_trade in ONE_trades.Values)
+        {
+            Console.WriteLine($"\nTrade {one_trade.trade_id}:");
+            foreach ((OptionKey key, int quantity) in one_trade.positions)
+            {
+                switch (key.OptionType)
+                {
+                    case OptionType.Stock:
+                        Console.WriteLine($"Stock: {quantity} {master_symbol} shares");
+                        break;
+                    case OptionType.Put:
+                    case OptionType.Call:
+                        Console.WriteLine($"{key.Symbol} {key.OptionType} Option: {quantity} {key.Expiration} {key.Strike}");
+                        break;
+                    default:
+                        Debug.Assert(false, $"Invalid key.OptionType in ONE_trades: {key.OptionType}");
+                        break;
+                }
+            }
+        }
     }
 
     // ",Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc"
@@ -812,7 +897,7 @@ static class Program
             }
         }
 
-        string dte = fields[one_trade_columns["DaysToExpiration"]]; 
+        string dte = fields[one_trade_columns["DaysToExpiration"]];
         if (!int.TryParse(dte, out oneTrade.dte))
         {
             Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid dte field: {dte}");
@@ -925,7 +1010,7 @@ static class Program
             return null;
         }
 
-        string open_price = fields[one_position_columns["Price"]]; 
+        string open_price = fields[one_position_columns["Price"]];
         if (!float.TryParse(open_price, out position.open_price))
         {
             Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid price field: {open_price}");
@@ -943,60 +1028,34 @@ static class Program
         // display IB positions
         DisplayIBPositions();
 
-        // go through each ONE position and find it's associated IB Position
-        //static Dictionary<(string, OptionType, DateOnly, int), (int, List<string>)> onePositions = new();
-        // ((string symbol, OptionType type, DateOnly expiration, int strike), (int quantity, List<string> trades))
-        foreach ((OptionKey ib_key, (int one_quantity, List<string> one_trade_ids)) in consolidatedOnePositions)
+        // verify that ONE Index position (if any) matches IB Stock, Futures positons
+        VerifyStockPositions();
+
+        // go through each consolidated ONE option position (whose quantity is != 0) and find it's associated IB Position
+        foreach ((OptionKey one_key, (int one_quantity, HashSet<string> one_trade_ids)) in consolidatedOnePositions)
         {
-            if (!ibPositions.TryGetValue(ib_key, out IBPosition? ib_position))
+            if (one_quantity == 0)
+                continue;
+
+            Debug.Assert(one_key.OptionType != OptionType.Futures);
+
+            // if ONE position is Stock ignore it...already checked in call to VerifyStockPositions();
+            if (one_key.OptionType == OptionType.Stock)
+                continue;
+
+            if (!ibPositions.TryGetValue(one_key, out IBPosition? ib_position))
             {
-                switch (ib_key.OptionType)
+                if (one_trade_ids.Count == 1)
+                    Console.WriteLine($"\n***Error*** ONE has an option position in {one_key.Symbol} {one_key.OptionType} {one_key.Expiration} {one_key.Strike} of {one_quantity} contracts, in trade {one_trade_ids.First()}, with no matching position in IB");
+                else
                 {
-                    case OptionType.Stock:
-                        // an SPX stock position in ONE could be satisfied by an IB position in SPY, ES, or MES, wher the expiration of ES or MES could be anything
-                        // because we save IB positions using a key with multiple values, we have to search through all IB positions to find possible resolutions to this
-                        foreach (OptionKey one_key in ibPositions.Keys)
-                        {
-                            switch (one_key.Symbol)
-                            {
-                                case "SPY":
-                                    break;
-
-                                case "MES":
-                                    break;
-                                case "ES":
-                                    break;
-                            }
-                        }
-                        if (one_trade_ids.Count == 1)
-                            Console.WriteLine($"\n***Error*** ONE has a stock position in {ib_key.Symbol} of {one_quantity} shares, in trade {one_trade_ids[0]}, with no matching position in IB");
-                        else
-                        {
-                            Console.WriteLine($"\n***Error*** ONE has a stock position in {ib_key.Symbol} of {one_quantity} shares, with no matching position in IB in the following ONE trades:");
-                            foreach (string one_trade_id in one_trade_ids)
-                            {
-                                ONETrade one_trade = oneTrades[one_trade_id];
-                                int missing_quantity = one_trade.positions[ib_key];
-                                Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} shares");
-                            }
-                        }
-                        break;
-
-                    case OptionType.Call:
-                    case OptionType.Put:
-                        if (one_trade_ids.Count == 1)
-                            Console.WriteLine($"\n***Error*** ONE has an option position in {ib_key.Symbol} {ib_key.OptionType} {ib_key.Expiration} {ib_key.Strike} of {one_quantity} contracts, in trade {one_trade_ids[0]}, with no matching position in IB:");
-                        else
-                        {
-                            Console.WriteLine($"\n***Error*** ONE has an option position in {ib_key.Symbol} {ib_key.OptionType} {ib_key.Expiration} {ib_key.Strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
-                            foreach (string one_trade_id in one_trade_ids)
-                            {
-                                ONETrade one_trade = oneTrades[one_trade_id];
-                                int missing_quantity = one_trade.positions[ib_key];
-                                Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} contracts");
-                            }
-                        }
-                        break;
+                    Console.WriteLine($"\n***Error*** ONE has an option position in {one_key.Symbol} {one_key.OptionType} {one_key.Expiration} {one_key.Strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
+                    foreach (string one_trade_id in one_trade_ids)
+                    {
+                        ONETrade one_trade = oneTrades[one_trade_id];
+                        int missing_quantity = one_trade.positions[one_key];
+                        Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} contracts");
+                    }
                 }
                 continue;
             }
@@ -1006,29 +1065,107 @@ static class Program
 
             // add one_position quantity to accounted_for_quantity...this will be checked later
             ib_position.one_quantity += one_quantity;
-            //}
         }
 
-        // now make sure each IB position has proper associated one position
+        // ok...we've gone through all the ONE option positions, and tried to find associated IB positions. But...
+        // there could still be ib option positions that have no corresponding ONE positions, or whose IB quantity does not match ONE quantity
+        // loop through all IB option positions, find associated ONE psotitions (if they don't exists, display error, if they do, check quantity)
         foreach (IBPosition position in ibPositions.Values)
         {
+            if (position.optionType == OptionType.Stock || position.optionType == OptionType.Futures)
+                continue;
+
             if (position.one_quantity != position.quantity)
             {
                 if (position.one_quantity == 0)
                 {
                     Console.WriteLine($"\n***Error*** IB has a {position.optionType} position with no matching position in ONE");
                     DisplayIBPosition(position);
-                    Console.WriteLine();
                 }
                 else
                 {
                     Console.WriteLine($"\n***Error*** IB quantity {position.quantity} does not match total ONE quantity {position.one_quantity} for IB position:");
                     DisplayIBPosition(position);
-                    Console.WriteLine();
                 }
             }
         }
         return true;
+    }
+
+    // make sure that any Index position in ONE is matched by stock/futures positionin IB and vice versa
+    static void VerifyStockPositions()
+    {
+        // get ONE consolidated index position
+        // note that net ONE index position could be 0 even if individual ONE trades have index positions
+        List<OptionKey> one_stock_keys = consolidatedOnePositions.Keys.Where(s => s.OptionType == OptionType.Stock).ToList();
+        Debug.Assert(one_stock_keys.Count <= 1, "***Program Error*** VerifyStockPositions: more than 1 Index position in consolidatedOnePositions");
+        (int one_quantity, HashSet<string> one_trade_ids) = (0, new());
+        if (one_stock_keys.Count == 1)
+        {
+            OptionKey one_key = one_stock_keys[0];
+            (one_quantity, one_trade_ids) = consolidatedOnePositions[one_key];
+            Debug.Assert(one_quantity != 0);
+        }
+
+        // get IB stock/futures positions
+        // note that net IB position could be 0 even if stock/futures positions exist in IB
+        List<OptionKey> ib_stock_or_futures_keys = ibPositions.Keys.Where(s => s.OptionType == OptionType.Stock || s.OptionType == OptionType.Futures).ToList();
+        float ib_stock_or_futures_quantity = 0f;
+        foreach (OptionKey ib_stock_or_futures_key in ib_stock_or_futures_keys)
+        {
+            Dictionary<string, float> possible_ib_symbols = associated_symbols[master_symbol];
+            Debug.Assert(possible_ib_symbols.ContainsKey(ib_stock_or_futures_key.Symbol));
+            float multiplier = possible_ib_symbols[ib_stock_or_futures_key.Symbol];
+            float quantity = ibPositions[ib_stock_or_futures_key].quantity;
+            ib_stock_or_futures_quantity += multiplier * quantity;
+        }
+
+        if (one_quantity == ib_stock_or_futures_quantity)
+            return;
+
+        // at this point, ONE's net Index position does not match IB's net stock/futures position. 
+        // note that either position could be 0
+        if (ib_stock_or_futures_quantity == 0)
+        {
+            Debug.Assert(one_quantity > 0);
+            Debug.Assert(one_trade_ids.Count > 0);
+            Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, while IB contains no matching positions, in the following ONE trades:");
+            Console.WriteLine(string.Join(",", one_trade_ids));
+            return;
+        }
+
+        if (one_quantity == 0)
+        {
+            Debug.Assert(ib_stock_or_futures_quantity > 0);
+            Console.WriteLine($"\n***Error*** IB has stock/futures positions of {ib_stock_or_futures_quantity} equivalent {master_symbol} shares, while ONE contains no matching positions");
+            // todo: list IB positions
+            return;
+        }
+
+        // at this point, both ONE and IB have index positions...just not same quantity
+
+        Debug.Assert(one_stock_keys.Count == 1);
+        Debug.Assert(one_quantity != 0);
+        Debug.Assert(ib_stock_or_futures_quantity != one_quantity);
+        if (one_trade_ids.Count == 1)
+            Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade {one_trade_ids.First()}, while IB contains {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
+        // todo: list ONE trades with index positoon, IB stock/futures positions
+#if false
+        else
+        {
+            if (ib_stock_or_futures_quantity == 0)
+                Console.WriteLine($"\n***Error*** ONE has an index position in {one_key.Symbol} of {one_quantity} shares in the following ONE trades, while IB contains no matching positions:");
+            else
+                Console.WriteLine($"\n***Error*** ONE has an index position in {one_key.Symbol} of {one_quantity} shares in the following ONE trades, while IB contains {ib_stock_or_futures_quantity} equivalent shares:");
+
+            foreach (string one_trade_id in one_trade_ids)
+            {
+                ONETrade one_trade = oneTrades[one_trade_id];
+                int missing_quantity = one_trade.positions[one_key];
+                Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} index shares");
+            }
+        }
+#endif
     }
 
     const char delimiter = ',';
@@ -1123,12 +1260,15 @@ static class Program
         return true;
     }
 
-    //static Dictionary<(string, OptionType, DateOnly, int), (int, List<string>)> consolidatedOnePositions = new();
+    //static Dictionary<(string, OptionType, DateOnly, int), (int, HashSet<string>)> consolidatedOnePositions = new();
     static void DisplayONEPositions()
     {
         Console.WriteLine($"\nConsolidated ONE Positions for {master_symbol}:");
-        foreach ((OptionKey one_key, (int quantity, List<string> trades)) in consolidatedOnePositions)
+
+        foreach ((OptionKey one_key, (int quantity, HashSet<string> trades)) in consolidatedOnePositions)
         {
+            //if (quantity == 0)
+            //    continue;
             string trade_str = "trade";
             if (trades.Count > 1)
                 trade_str = "trades";
@@ -1153,7 +1293,7 @@ static class Program
         Console.WriteLine($"IB Positions related to {master_symbol}:");
         foreach (IBPosition position in ibPositions.Values)
             DisplayIBPosition(position);
-        Console.WriteLine();
+        //Console.WriteLine();
     }
 
     static void DisplayIBPosition(IBPosition position)
@@ -1173,3 +1313,4 @@ static class Program
         }
     }
 }
+
