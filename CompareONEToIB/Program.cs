@@ -41,7 +41,7 @@ class ONETrade
 
     // these are consolidated positions for trade: key is (symbol, OptionType, Expiration, Strike); value is quantity
     // so Dictionary contains no keys with quantity == 0
-    public Dictionary<OptionKey, int> positions = new();
+    public SortedDictionary<OptionKey, int> positions = new();
 }
 
 //,,Account,TradeId,Date,Transaction,Qty,Symbol,Expiry,Type,Description,Underlying,Price,Commission
@@ -93,6 +93,7 @@ public class OptionKey : IComparable<OptionKey>
 
     public int CompareTo(OptionKey? other)
     {
+        Debug.Assert(other != null);
         if (other == null)
             return 1;
 
@@ -113,8 +114,7 @@ public class OptionKey : IComparable<OptionKey>
                     return -1; // stocks come before futures
 
                 // this and other are both stocks...sort by symbol
-                var xxx = Symbol.CompareTo(other.Symbol);
-                return xxx;
+                return Symbol.CompareTo(other.Symbol);
             }
 
             // this is futures
@@ -741,6 +741,10 @@ static class Program
             var key = new OptionKey(position.symbol, position.optionType, position.expiration, position.strike);
 
             // within trade, we consolidate individual trades to obtain an overall current position
+            if (key.OptionType == OptionType.Stock)
+            {
+                int aaa = 1;
+            }
             if (curOneTrade.positions.ContainsKey(key))
             {
                 curOneTrade.positions[key] += position.quantity;
@@ -756,7 +760,7 @@ static class Program
             }
         }
 
-        DisplayTrades();
+        DisplayONETrades();
 
         RemoveClosedTrades();
 
@@ -793,7 +797,7 @@ static class Program
     }
 
     // note: this also removes trades from ONE_trades which are closed
-    static void DisplayTrades()
+    static void DisplayONETrades()
     {
         foreach (ONETrade one_trade in ONE_trades.Values)
         {
