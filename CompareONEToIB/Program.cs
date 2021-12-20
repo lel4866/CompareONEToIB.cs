@@ -198,7 +198,7 @@ static class Program
     static SortedDictionary<OptionKey, IBPosition> ibPositions = new();
 
     // dictionry of ONE trades with key of trade id
-    static Dictionary<string, ONETrade> ONE_trades = new();
+    static SortedDictionary<string, ONETrade> ONE_trades = new();
 
     // consolidated ONE positions; key is (symbol, OptionType, Expiration, Strike); value is (quantity, HashSet<string>); string is trade id 
     static SortedDictionary<OptionKey, (int, HashSet<string>)> consolidatedOnePositions = new();
@@ -219,6 +219,12 @@ static class Program
         rc = ReadIBData();
         if (!rc)
             return -1;
+
+        // display ONE positions
+        DisplayONEPositions();
+
+        // display IB positions
+        DisplayIBPositions();
 
         rc = CompareONEPositionsToIBPositions();
         if (!rc)
@@ -709,6 +715,7 @@ static class Program
                 curOneTrade = ParseONETradeLine(line_index, fields);
                 if (curOneTrade == null)
                     return false;
+
                 ONE_trades.Add(curOneTrade.trade_id, curOneTrade);
                 continue;
             }
@@ -730,7 +737,7 @@ static class Program
             if (position == null)
                 return false;
 
-            // now add position to consolidated positions dictionary for trade; remove existing position if quantity now 0
+            // now add position to trade's positions dictionary; remove existing position if quantity now 0
             var key = new OptionKey(position.symbol, position.optionType, position.expiration, position.strike);
 
             // within trade, we consolidate individual trades to obtain an overall current position
@@ -747,36 +754,14 @@ static class Program
                 Debug.Assert(position.quantity != 0); // todo: should be error message
                 curOneTrade.positions.Add(key, position.quantity);
             }
-#if false
-            // now add option position to global consolidated ONE positions dictionary; remove existing position if quantity now 0
-            //static Dictionary<(string, OptionType, DateOnly, int), (int, HashSet<string>)> onePositions = new();
-            if (consolidatedOnePositions.ContainsKey(key))
-            {
-                (int quantity, HashSet<string> trade_ids) = consolidatedOnePositions[key];
-                int new_quantity = quantity + position.quantity;
-#if false
-                    if (new_quantity != 0)
-                        consolidatedOnePositions[key] = (new_quantity, trades);
-                    else
-                        consolidatedOnePositions.Remove(key);
-#else
-                trade_ids.Add(curOneTrade.trade_id);
-                consolidatedOnePositions[key] = (new_quantity, trade_ids);
-#endif
-            }
-            else
-            {
-                Debug.Assert(position.quantity != 0); // todo: should be error message
-                HashSet<string> trade_ids = new();
-                trade_ids.Add(curOneTrade.trade_id);
-                consolidatedOnePositions.Add(key, (position.quantity, trade_ids));
-            }
-#endif
         }
 
         DisplayTrades();
 
+        RemoveClosedTrades();
+
         CreateConsolidateOnePositions();
+
         return true;
     }
 
@@ -784,9 +769,6 @@ static class Program
     // right now, this could create ONE positions with 0 quantity if trades "step on strikes"
     static void CreateConsolidateOnePositions()
     {
-        // debug until we decide to use this 
-        consolidatedOnePositions.Clear();
-
         foreach (ONETrade one_trade in ONE_trades.Values)
         {
             foreach ((OptionKey key, int quantity) in one_trade.positions)
@@ -800,19 +782,43 @@ static class Program
                 }
                 else
                 {
+                    int new_quantity = consolidatedOnePositions[key].Item1 + quantity;
                     HashSet<string> trade_ids = consolidatedOnePositions[key].Item2;
                     Debug.Assert(!trade_ids.Contains(one_trade.trade_id));
                     trade_ids.Add(one_trade.trade_id);
+                    consolidatedOnePositions[key] = (new_quantity, trade_ids);
                 }
             }
         }
     }
 
+    // note: this also removes trades from ONE_trades which are closed
     static void DisplayTrades()
     {
         foreach (ONETrade one_trade in ONE_trades.Values)
         {
-            Console.WriteLine($"\nTrade {one_trade.trade_id}:");
+            if (one_trade.status == TradeStatus.Closed)
+            {
+                if (one_trade.positions.Count != 0)
+                {
+                    Console.WriteLine($"\n***Error*** Trade {one_trade.trade_id} is closed, but contains positions:");
+                }
+                else
+                {
+                    Console.WriteLine($"\nTrade {one_trade.trade_id}: Closed. No positions");
+                    continue;
+                }
+            }
+            else
+                Console.WriteLine($"\nTrade {one_trade.trade_id}:");
+
+            if (one_trade.positions.Count == 0)
+            {
+                Debug.Assert(one_trade.status == TradeStatus.Open);
+                Console.WriteLine("***Error*** Trade open but no net positions.");
+                continue;
+            }
+
             foreach ((OptionKey key, int quantity) in one_trade.positions)
             {
                 switch (key.OptionType)
@@ -830,6 +836,10 @@ static class Program
                 }
             }
         }
+    }
+
+    static void RemoveClosedTrades()
+    {
     }
 
     // ",Account,Expiration,TradeId,TradeName,Underlying,Status,TradeType,OpenDate,CloseDate,DaysToExpiration,DaysInTrade,Margin,Comms,PnL,PnLperc"
@@ -1022,12 +1032,6 @@ static class Program
 
     static bool CompareONEPositionsToIBPositions()
     {
-        // display ONE positions
-        DisplayONEPositions();
-
-        // display IB positions
-        DisplayIBPositions();
-
         // verify that ONE Index position (if any) matches IB Stock, Futures positons
         VerifyStockPositions();
 
@@ -1149,6 +1153,9 @@ static class Program
         Debug.Assert(ib_stock_or_futures_quantity != one_quantity);
         if (one_trade_ids.Count == 1)
             Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade {one_trade_ids.First()}, while IB contains {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
+        else
+            Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trades {string.Join(",", one_trade_ids)}, while IB contains {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
+
         // todo: list ONE trades with index positoon, IB stock/futures positions
 #if false
         else
