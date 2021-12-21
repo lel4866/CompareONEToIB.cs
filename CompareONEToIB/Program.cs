@@ -1058,14 +1058,14 @@ static class Program
             if (!ibPositions.TryGetValue(one_key, out IBPosition? ib_position))
             {
                 Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position in trade(s) {string.Join(",", one_trade_ids)}, with no matching position in IB:");
-                Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: expiration = {one_key.Expiration}, strike = {one_key.Strike}, quantity = {one_quantity}");
+                Console.WriteLine($"{one_key.Symbol}\t{one_key.OptionType}\tquantity: {one_quantity}\texpiration: {one_key.Expiration}\tstrike: {one_key.Strike}");
                 continue;
             }
 
             if (one_quantity != ib_position.quantity)
             {
                 Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position in trade(s) {string.Join(",", one_trade_ids)}, whose quantity ({one_quantity}) does not match IB quantity ({ib_position.quantity}):");
-                Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: expiration = {one_key.Expiration}, strike = {one_key.Strike}, quantity = {one_quantity}");
+                Console.WriteLine($"{one_key.Symbol}\t{one_key.OptionType}\tquantity: {one_quantity}\texpiration: {one_key.Expiration}\tstrike: {one_key.Strike}");
             }
 
             // save one position reference in ib position
@@ -1286,14 +1286,17 @@ static class Program
         switch (position.optionType)
         {
             case OptionType.Stock:
-                Console.WriteLine($"{position.symbol} {position.optionType}: quantity = {position.quantity}");
+                //Console.WriteLine($"{position.symbol} {position.optionType}: quantity = {position.quantity}");
+                Console.WriteLine($"{position.symbol}\t{position.optionType}\tquantity: {position.quantity}");
                 break;
             case OptionType.Futures:
-                Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, quantity = {position.quantity}");
+                //Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, quantity = {position.quantity}");
+                Console.WriteLine($"{position.symbol}\t{position.optionType}\tquantity: {position.quantity}\texpiration: {position.expiration}");
                 break;
             case OptionType.Call:
             case OptionType.Put:
-                Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, strike = {position.strike}, quantity = {position.quantity}");
+                //Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, strike = {position.strike}, quantity = {position.quantity}");
+                Console.WriteLine($"{position.symbol}\t{position.optionType}\tquantity: {position.quantity}\texpiration: {position.expiration}\tstrike: {position.strike}");
                 break;
         }
     }
