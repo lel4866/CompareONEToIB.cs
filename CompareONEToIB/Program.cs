@@ -169,8 +169,8 @@ static class Program
 {
     internal const string version = "0.0.2";
     internal const string version_date = "2021-12-17";
-    const string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
-    internal const string one_directory = @"C:\Users\lel48\OneDrive\Documents\ONEExport\";
+    internal static string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
+    internal static string one_directory = @"C:\Users\lel48\OneDrive\Documents\ONEExport\";
 
     static string one_account = "";
 
@@ -188,19 +188,20 @@ static class Program
         { "NDX", new Dictionary<string, float> { { "QQQ", 0.1f }, { "MNQ", 5f }, { "NQ", 50f } } }
     };
 
+    // note: the ref is readonly, not the contents of the Dictionary
     static readonly Dictionary<string, int> ib_columns = new(); // key is column name, value is column index
-    static Dictionary<string, int> one_trade_columns = new(); // key is column name, value is column index
-    static Dictionary<string, int> one_position_columns = new(); // key is column name, value is column index
-    static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
+    static readonly Dictionary<string, int> one_trade_columns = new(); // key is column name, value is column index
+    static readonly Dictionary<string, int> one_position_columns = new(); // key is column name, value is column index
+    static readonly Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
 
     // key is (symbol, OptionType, Expiration, Strike); value is quantity
-    static SortedDictionary<OptionKey, IBPosition> ibPositions = new();
+    static readonly SortedDictionary<OptionKey, IBPosition> ibPositions = new();
 
     // dictionry of ONE trades with key of trade id
-    static SortedDictionary<string, ONETrade> ONE_trades = new();
+    static readonly SortedDictionary<string, ONETrade> ONE_trades = new();
 
     // consolidated ONE positions; key is (symbol, OptionType, Expiration, Strike); value is (quantity, HashSet<string>); string is trade id 
-    static SortedDictionary<OptionKey, (int, HashSet<string>)> consolidatedOnePositions = new();
+    static readonly SortedDictionary<OptionKey, (int, HashSet<string>)> consolidatedOnePositions = new();
 
     static int Main(string[] args)
     {
@@ -291,33 +292,44 @@ static class Program
             string latest_full_filename = "";
             files = Directory.GetFiles(ib_directory, filename_pattern, SearchOption.TopDirectoryOnly);
             bool file_found = false;
+            bool warning = false;
             foreach (string full_filename in files)
             {
                 string filename = Path.GetFileName(full_filename);
                 if (!filename.StartsWith(filename_prefix))
                 {
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename pattern: {filename}");
+                    if (!warning) Console.WriteLine();
+                    warning = true;
+                    Console.WriteLine($"***Warning*** CSV file found in IB directory that does not match IB filename pattern: {filename}");
                     continue;
                 }
                 string datestr = filename[filename_prefix_len..];
                 if (datestr.Length != 12) // yyyymmdd.csv
                 {
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename pattern: {filename}");
+                    if (!warning) Console.WriteLine();
+                    warning = true;
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB filename pattern: {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr[..4], out int year))
                 {
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename pattern: {filename}");
+                    if (!warning) Console.WriteLine();
+                    warning = true;
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB filename pattern: {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr.AsSpan(4, 2), out int month))
                 {
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename pattern: {filename}");
+                    if (!warning) Console.WriteLine();
+                    warning = true;
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB filename pattern: {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr.AsSpan(6, 2), out int day))
                 {
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB portfolio filename patterne: {filename}");
+                    if (!warning) Console.WriteLine();
+                    warning = true;
+                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB filename patterne: {filename}");
                     continue;
                 }
 
