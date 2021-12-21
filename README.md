@@ -43,4 +43,158 @@ IB1
 ,,"IB1",285,10/11/2021 3:58:48 PM,Buy,1,SPXW  211204P03000000,12/3/2021,Put,SPX Dec21 3000 Put,SPX,2.7,1.5
 ```
 
+This is sample output: 
+
+```
+>.\CompareONEToIB.exe -s spx -id C:\Users\lel48\OneDrive\Documents\IBExport -od C:\Users\lel48\OneDrive\Documents\ONEExport > output.txt
+
+CompareONEToIB Version 0.0.2, 2021-12-17. Processing trades for SPX
+
+***Warning*** CSV file found in IB directory that does not match IB filename pattern: filtered_portfolio.20211214.csv
+***Warning*** CSV file found in IB directory that does not match IB filename pattern: simulated_portfolio.20211214.csv
+
+Processing ONE file: C:\Users\lel48\OneDrive\Documents\ONEExport\2021-12-14-ONEDetailReport.csv
+Processing IB file: C:\Users\lel48\OneDrive\Documents\IBExport\portfolio.20211213.csv
+
+ONE Trades:
+
+Trade 284:
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 3100
+SPX  Put  quantity: -4   expiration: 3/18/2022    strike: 3625
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 3825
+
+Trade 285:
+SPX  Put  quantity: 4    expiration: 3/18/2022    strike: 2725
+SPX  Put  quantity: -4   expiration: 3/18/2022    strike: 3775
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 4025
+SPXW Put  quantity: 1    expiration: 4/29/2022    strike: 3250
+
+Trade 287:
+SPX  Index     quantity: -1
+SPX  Put  quantity: 4    expiration: 4/14/2022    strike: 2775
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 3800
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4075
+
+Trade 288:
+SPX  Put  quantity: 2    expiration: 1/21/2022    strike: 2450
+SPXW Put  quantity: 2    expiration: 3/31/2022    strike: 3175
+SPXW Put  quantity: -2   expiration: 3/31/2022    strike: 3825
+SPXW Put  quantity: -2   expiration: 3/31/2022    strike: 3850
+SPXW Put  quantity: 2    expiration: 3/31/2022    strike: 4100
+
+Trade 294: Closed. No positions
+
+Trade 296:
+SPXW Put  quantity: 1    expiration: 1/31/2022    strike: 2800
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 3150
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 3900
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4200
+
+Trade 297:
+SPXW Put  quantity: 2    expiration: 1/31/2022    strike: 2600
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 3500
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 4050
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4325
+
+Trade 298:
+SPX  Put  quantity: 2    expiration: 2/18/2022    strike: 2350
+SPXW Put  quantity: 2    expiration: 4/29/2022    strike: 3400
+SPXW Put  quantity: -4   expiration: 4/29/2022    strike: 4000
+SPXW Put  quantity: 2    expiration: 4/29/2022    strike: 4300
+
+Trade 301:
+SPX  Index     quantity: 5
+SPXW Put  quantity: 1    expiration: 1/14/2022    strike: 2700
+SPX  Put  quantity: 1    expiration: 1/21/2022    strike: 2850
+SPXW Put  quantity: 1    expiration: 1/28/2022    strike: 3000
+SPXW Put  quantity: 1    expiration: 1/31/2022    strike: 2750
+
+Trade 302: Closed. No positions
+
+Trade 303: Closed. No positions
+
+Trade 304: Closed. No positions
+
+Consolidated ONE Positions for SPX:
+SPX  Index     quantity: 4    trade(s): 287,301
+SPXW Put  quantity: 1    expiration: 1/14/2022    strike: 2700   trade(s): 301
+SPX  Put  quantity: 2    expiration: 1/21/2022    strike: 2450   trade(s): 288
+SPX  Put  quantity: 1    expiration: 1/21/2022    strike: 2850   trade(s): 301
+SPXW Put  quantity: 1    expiration: 1/28/2022    strike: 3000   trade(s): 301
+SPXW Put  quantity: 2    expiration: 1/31/2022    strike: 2600   trade(s): 297
+SPXW Put  quantity: 1    expiration: 1/31/2022    strike: 2750   trade(s): 301
+SPXW Put  quantity: 1    expiration: 1/31/2022    strike: 2800   trade(s): 296
+SPX  Put  quantity: 2    expiration: 2/18/2022    strike: 2350   trade(s): 298
+SPX  Put  quantity: 4    expiration: 3/18/2022    strike: 2725   trade(s): 285
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 3100   trade(s): 284
+SPX  Put  quantity: -4   expiration: 3/18/2022    strike: 3625   trade(s): 284
+SPX  Put  quantity: -4   expiration: 3/18/2022    strike: 3775   trade(s): 285
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 3825   trade(s): 284
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 4025   trade(s): 285
+SPXW Put  quantity: 2    expiration: 3/31/2022    strike: 3175   trade(s): 288
+SPXW Put  quantity: -2   expiration: 3/31/2022    strike: 3825   trade(s): 288
+SPXW Put  quantity: -2   expiration: 3/31/2022    strike: 3850   trade(s): 288
+SPXW Put  quantity: 2    expiration: 3/31/2022    strike: 4100   trade(s): 288
+SPX  Put  quantity: 4    expiration: 4/14/2022    strike: 2775   trade(s): 287
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 3150   trade(s): 296
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 3500   trade(s): 297
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 3800   trade(s): 287
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 3900   trade(s): 296
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 4050   trade(s): 297
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4075   trade(s): 287
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4200   trade(s): 296
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4325   trade(s): 297
+SPXW Put  quantity: 1    expiration: 4/29/2022    strike: 3250   trade(s): 285
+SPXW Put  quantity: 2    expiration: 4/29/2022    strike: 3400   trade(s): 298
+SPXW Put  quantity: -4   expiration: 4/29/2022    strike: 4000   trade(s): 298
+SPXW Put  quantity: 2    expiration: 4/29/2022    strike: 4300   trade(s): 298
+
+IB Positions related to SPX:
+SPY  Stock     quantity: 100
+MES  Futures   quantity: 1    expiration: 3/1/2022
+SPXW Put  quantity: 1    expiration: 1/14/2022    strike: 2700
+SPX  Put  quantity: 2    expiration: 1/21/2022    strike: 2450
+SPX  Put  quantity: 1    expiration: 1/21/2022    strike: 2850
+SPXW Put  quantity: 1    expiration: 1/28/2022    strike: 3000
+SPXW Put  quantity: 2    expiration: 1/31/2022    strike: 2600
+SPXW Put  quantity: 1    expiration: 1/31/2022    strike: 2750
+SPXW Put  quantity: 1    expiration: 1/31/2022    strike: 2800
+SPX  Put  quantity: 2    expiration: 2/18/2022    strike: 2350
+SPX  Put  quantity: 4    expiration: 3/18/2022    strike: 2725
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 3100
+SPX  Put  quantity: -4   expiration: 3/18/2022    strike: 3625
+SPX  Put  quantity: -4   expiration: 3/18/2022    strike: 3775
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 3825
+SPX  Put  quantity: 2    expiration: 3/18/2022    strike: 4025
+SPXW Put  quantity: 2    expiration: 3/31/2022    strike: 3175
+SPXW Put  quantity: -2   expiration: 3/31/2022    strike: 3825
+SPXW Put  quantity: -2   expiration: 3/31/2022    strike: 3850
+SPXW Put  quantity: 2    expiration: 3/31/2022    strike: 4100
+SPX  Put  quantity: 4    expiration: 4/14/2022    strike: 2775
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 3150
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 3350
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 3800
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 3900
+SPX  Put  quantity: -4   expiration: 4/14/2022    strike: 4050
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4075
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4200
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 4325
+SPXW Put  quantity: 2    expiration: 4/29/2022    strike: 3250
+SPXW Put  quantity: -4   expiration: 4/29/2022    strike: 4000
+SPXW Put  quantity: 2    expiration: 4/29/2022    strike: 4300
+
+***Error*** ONE has an index position in SPX of 4 shares, in trade(s) 287,301, while IB has 15 equivalent SPX shares
+
+***Error*** ONE has a Put position in trade(s) 297, with no matching position in IB:
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 3500
+
+***Error*** ONE has a Put position in trade(s) 285, whose quantity (1) does not match IB quantity (2):
+SPXW Put  quantity: 1    expiration: 4/29/2022    strike: 3250
+
+***Error*** ONE has a Put position in trade(s) 298, with no matching position in IB:
+SPXW Put  quantity: 2    expiration: 4/29/2022    strike: 3400
+
+***Error*** IB has a Put position with no matching position in ONE
+SPX  Put  quantity: 2    expiration: 4/14/2022    strike: 3350
+```
 

@@ -216,6 +216,8 @@ static class Program
         string? ib_filename = GetIBFileName();
         if (one_filename == null || ib_filename == null)
             return -1;
+        Console.WriteLine("\nProcessing ONE file: " + one_filename);
+        Console.WriteLine("Processing IB file: " + ib_filename);
 
         bool rc = ProcessONEFile(one_filename);
         if (!rc)
@@ -360,7 +362,6 @@ static class Program
     //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
     static bool ProcessIBFile(string full_filename)
     {
-        Console.WriteLine("Processing IB file: " + full_filename + '\n');
         string[] lines = File.ReadAllLines(full_filename);
         if (lines.Length < 3)
         {
@@ -582,7 +583,6 @@ static class Program
     //,,"IB1",296,11/12/2021 11:02:02 AM,Buy,1,SPX,,Stock,SPX Stock, SPX,4660.05,0.005
     static bool ProcessONEFile(string full_filename)
     {
-        Console.WriteLine("\nProcessing ONE file: " + full_filename);
         string[] lines = File.ReadAllLines(full_filename);
         if (lines.Length < 9)
         {
@@ -798,6 +798,7 @@ static class Program
     // note: this also removes trades from ONE_trades which are closed
     static void DisplayONETrades()
     {
+        Console.WriteLine("\nONE Trades:");
         foreach (ONETrade one_trade in ONE_trades.Values)
         {
             if (one_trade.status == TradeStatus.Closed)
