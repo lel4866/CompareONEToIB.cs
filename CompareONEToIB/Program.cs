@@ -83,9 +83,8 @@ public class OptionKey : IComparable<OptionKey>
 
     public override bool Equals(object? obj)
     {
-        if (obj is OptionKey)
+        if (obj is OptionKey other)
         {
-            OptionKey other = (OptionKey)obj;
             return other != null && Symbol == other.Symbol && OptionType == other.OptionType && Expiration == other.Expiration && Strike == other.Strike;
         }
         return false;
@@ -189,7 +188,7 @@ static class Program
         { "NDX", new Dictionary<string, float> { { "QQQ", 0.1f }, { "MNQ", 5f }, { "NQ", 50f } } }
     };
 
-    static Dictionary<string, int> ib_columns = new(); // key is column name, value is column index
+    static readonly Dictionary<string, int> ib_columns = new(); // key is column name, value is column index
     static Dictionary<string, int> one_trade_columns = new(); // key is column name, value is column index
     static Dictionary<string, int> one_position_columns = new(); // key is column name, value is column index
     static Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
@@ -216,12 +215,12 @@ static class Program
         if (!rc)
             return -1;
 
+        // display ONE positions
+        DisplayONEPositions();
+
         rc = ReadIBData();
         if (!rc)
             return -1;
-
-        // display ONE positions
-        DisplayONEPositions();
 
         // display IB positions
         DisplayIBPositions();
@@ -741,10 +740,6 @@ static class Program
             var key = new OptionKey(position.symbol, position.optionType, position.expiration, position.strike);
 
             // within trade, we consolidate individual trades to obtain an overall current position
-            if (key.OptionType == OptionType.Stock)
-            {
-                int aaa = 1;
-            }
             if (curOneTrade.positions.ContainsKey(key))
             {
                 curOneTrade.positions[key] += position.quantity;
@@ -1062,18 +1057,21 @@ static class Program
 
             if (!ibPositions.TryGetValue(one_key, out IBPosition? ib_position))
             {
-                if (one_trade_ids.Count == 1)
-                    Console.WriteLine($"\n***Error*** ONE has an option position in {one_key.Symbol} {one_key.OptionType} {one_key.Expiration} {one_key.Strike} of {one_quantity} contracts, in trade {one_trade_ids.First()}, with no matching position in IB");
-                else
+                if (one_trade_ids.Count == 1) {
+                    Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position with no matching position in IB");
+                    Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: expiration = {one_key.Expiration}, strike = {one_key.Strike}, quantity = {one_quantity}");
+                    //Console.WriteLine($"\n***Error*** ONE has an option position in {one_key.Symbol} {one_key.OptionType} {one_key.Expiration} {one_key.Strike} of {one_quantity} contracts, in trade {one_trade_ids.First()}, with no matching position in IB");
+            }
+            else
+            {
+                Console.WriteLine($"\n***Error*** ONE has an option position in {one_key.Symbol} {one_key.OptionType} {one_key.Expiration} {one_key.Strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
+                foreach (string one_trade_id in one_trade_ids)
                 {
-                    Console.WriteLine($"\n***Error*** ONE has an option position in {one_key.Symbol} {one_key.OptionType} {one_key.Expiration} {one_key.Strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
-                    foreach (string one_trade_id in one_trade_ids)
-                    {
-                        ONETrade one_trade = oneTrades[one_trade_id];
-                        int missing_quantity = one_trade.positions[one_key];
-                        Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} contracts");
-                    }
+                    ONETrade one_trade = oneTrades[one_trade_id];
+                    int missing_quantity = one_trade.positions[one_key];
+                    Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} contracts");
                 }
+            }
                 continue;
             }
 
@@ -1146,15 +1144,14 @@ static class Program
         {
             Debug.Assert(one_quantity > 0);
             Debug.Assert(one_trade_ids.Count > 0);
-            Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, while IB contains no matching positions, in the following ONE trades:");
-            Console.WriteLine(string.Join(",", one_trade_ids));
+            Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade(s) {string.Join(",", one_trade_ids)}, while IB has no matching positions");
             return;
         }
 
         if (one_quantity == 0)
         {
             Debug.Assert(ib_stock_or_futures_quantity > 0);
-            Console.WriteLine($"\n***Error*** IB has stock/futures positions of {ib_stock_or_futures_quantity} equivalent {master_symbol} shares, while ONE contains no matching positions");
+            Console.WriteLine($"\n***Error*** IB has stock/futures positions of {ib_stock_or_futures_quantity} equivalent {master_symbol} shares, while ONE has no matching positions");
             // todo: list IB positions
             return;
         }
@@ -1164,10 +1161,7 @@ static class Program
         Debug.Assert(one_stock_keys.Count == 1);
         Debug.Assert(one_quantity != 0);
         Debug.Assert(ib_stock_or_futures_quantity != one_quantity);
-        if (one_trade_ids.Count == 1)
-            Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade {one_trade_ids.First()}, while IB contains {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
-        else
-            Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trades {string.Join(",", one_trade_ids)}, while IB contains {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
+        Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade(s) {string.Join(",", one_trade_ids)}, while IB has {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
     }
 
     const char delimiter = ',';
