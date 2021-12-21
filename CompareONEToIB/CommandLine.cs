@@ -13,6 +13,9 @@ internal static class CommandLine
     {
         string? arg_name = null;
         bool exit = false;
+        bool symbol_specified = false;
+        bool id_specified = false;
+        bool od_specified = false;
 
         foreach (string arg in args)
         {
@@ -27,14 +30,32 @@ internal static class CommandLine
                     case "-s":
                     case "--symbol":
                         arg_name = "symbol";
+                        if (symbol_specified)
+                        {
+                            Console.WriteLine("***Command Line Error*** symbol can only be specified once");
+                            exit = true;
+                        }
+                        symbol_specified = true;
                         break;
                     case "-id":
                     case "--ibdir":
                         arg_name = "ibdir";
+                        if (id_specified)
+                        {
+                            Console.WriteLine("***Command Line Error*** IB directory can only be specified once");
+                            exit = true;
+                        }
+                        id_specified = true;
                         break;
                     case "-od":
                     case "--onedir":
                         arg_name = "onedir";
+                        if (od_specified)
+                        {
+                            Console.WriteLine("***Command Line Error*** ONE directory can only be specified once");
+                            exit = true;
+                        }
+                        od_specified = true;
                         break;
                     case "-h":
                     case "--help":
@@ -47,7 +68,6 @@ internal static class CommandLine
                         Console.WriteLine("    --onedir, -od  : specify directory that contains files exported from ONE (of form: yyyy-mm-dd-ONEDetailReport.csv)");
                         Console.WriteLine("    --ibdir, -id  : specify directory that contains files exported from IB (of form: portfolio.yyyymmdd.csv)");
                         break;
-
                     default:
                         Console.WriteLine("Invalid command line argument: " + arg + ". Program exiting.");
                         exit = true;
@@ -70,7 +90,7 @@ internal static class CommandLine
                     case "ibdir":
                         if (!Directory.Exists(arg))
                         {
-                            Console.WriteLine("IB Direcotry: " + arg + "does not exist. Program exiting.");
+                            Console.WriteLine("IB Directory: " + arg + "does not exist. Program exiting.");
                             exit = true;
                         }
                         Program.ib_directory = arg;
@@ -79,7 +99,7 @@ internal static class CommandLine
                     case "onedir":
                         if (!Directory.Exists(arg))
                         {
-                            Console.WriteLine("ONE Direcotry: " + arg + "does not exist. Program exiting.");
+                            Console.WriteLine("ONE Directory: " + arg + "does not exist. Program exiting.");
                             exit = true;
                         }
                         Program.one_directory = arg;
