@@ -1057,22 +1057,15 @@ static class Program
 
             if (!ibPositions.TryGetValue(one_key, out IBPosition? ib_position))
             {
-                if (one_trade_ids.Count == 1) {
-                    Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position with no matching position in IB");
-                    Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: expiration = {one_key.Expiration}, strike = {one_key.Strike}, quantity = {one_quantity}");
-                    //Console.WriteLine($"\n***Error*** ONE has an option position in {one_key.Symbol} {one_key.OptionType} {one_key.Expiration} {one_key.Strike} of {one_quantity} contracts, in trade {one_trade_ids.First()}, with no matching position in IB");
-            }
-            else
-            {
-                Console.WriteLine($"\n***Error*** ONE has an option position in {one_key.Symbol} {one_key.OptionType} {one_key.Expiration} {one_key.Strike} of {one_quantity} contracts, with no matching position in IB in the following ONE trades:");
-                foreach (string one_trade_id in one_trade_ids)
-                {
-                    ONETrade one_trade = oneTrades[one_trade_id];
-                    int missing_quantity = one_trade.positions[one_key];
-                    Console.WriteLine($"            ONE trade {one_trade_id} has {missing_quantity} contracts");
-                }
-            }
+                Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position in trade(s) {string.Join(",", one_trade_ids)}, with no matching position in IB:");
+                Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: expiration = {one_key.Expiration}, strike = {one_key.Strike}, quantity = {one_quantity}");
                 continue;
+            }
+
+            if (one_quantity != ib_position.quantity)
+            {
+                Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position in trade(s) {string.Join(",", one_trade_ids)}, whose quantity ({one_quantity}) does not match IB quantity ({ib_position.quantity}):");
+                Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: expiration = {one_key.Expiration}, strike = {one_key.Strike}, quantity = {one_quantity}");
             }
 
             // save one position reference in ib position
@@ -1083,10 +1076,11 @@ static class Program
         }
 
         // ok...we've gone through all the ONE option positions, and tried to find associated IB positions. But...
-        // there could still be ib option positions that have no corresponding ONE positions, or whose IB quantity does not match ONE quantity
-        // loop through all IB option positions, find associated ONE psotitions (if they don't exists, display error, if they do, check quantity)
+        // there could still be IB option positions that have no corresponding ONE position
+        // loop through all IB option positions, find associated ONE positions (if they don't exist, display error)
         foreach (IBPosition position in ibPositions.Values)
         {
+            // ignore stock/futures positions...they've already been checked in VerifyStockPositions()
             if (position.optionType == OptionType.Stock || position.optionType == OptionType.Futures)
                 continue;
 
@@ -1095,11 +1089,6 @@ static class Program
                 if (position.one_quantity == 0)
                 {
                     Console.WriteLine($"\n***Error*** IB has a {position.optionType} position with no matching position in ONE");
-                    DisplayIBPosition(position);
-                }
-                else
-                {
-                    Console.WriteLine($"\n***Error*** IB quantity {position.quantity} does not match total ONE quantity {position.one_quantity} for IB position:");
                     DisplayIBPosition(position);
                 }
             }
