@@ -202,6 +202,8 @@ static class Program
     // consolidated ONE positions; key is (symbol, OptionType, Expiration, Strike); value is (quantity, HashSet<string>); string is trade id 
     static SortedDictionary<OptionKey, (int, HashSet<string>)> consolidatedOnePositions = new();
 
+    static int master_rc = 0; // master return code
+
     static int Main(string[] args)
     {
         var stopWatch = new Stopwatch();
@@ -757,7 +759,7 @@ static class Program
 
         DisplayONETrades();
 
-        RemoveClosedTrades();
+        RemoveClosedONETrades();
 
         CreateConsolidateOnePositions();
 
@@ -814,7 +816,7 @@ static class Program
             if (one_trade.positions.Count == 0)
             {
                 Debug.Assert(one_trade.status == TradeStatus.Open);
-                Console.WriteLine("***Error*** Trade open but no net positions.");
+                Console.WriteLine($"***Error*** Trade Open but no net positions.");
                 continue;
             }
 
@@ -838,7 +840,7 @@ static class Program
     }
 
     // remove closed trades from ONE_trades
-    static void RemoveClosedTrades()
+    static void RemoveClosedONETrades()
     {
         List<string> closedTradeIds = new();
         foreach (ONETrade one_trade in ONE_trades.Values)
@@ -1041,7 +1043,7 @@ static class Program
     static bool CompareONEPositionsToIBPositions()
     {
         // verify that ONE Index position (if any) matches IB Stock, Futures positons
-        VerifyStockPositions();
+        bool rc = VerifyStockPositions();
 
         // go through each consolidated ONE option position (whose quantity is != 0) and find it's associated IB Position
         foreach ((OptionKey one_key, (int one_quantity, HashSet<string> one_trade_ids)) in consolidatedOnePositions)
@@ -1059,6 +1061,7 @@ static class Program
             {
                 Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position in trade(s) {string.Join(",", one_trade_ids)}, with no matching position in IB:");
                 Console.WriteLine($"{one_key.Symbol}\t{one_key.OptionType}\tquantity: {one_quantity}\texpiration: {one_key.Expiration}\tstrike: {one_key.Strike}");
+                rc = false;
                 continue;
             }
 
@@ -1066,6 +1069,7 @@ static class Program
             {
                 Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position in trade(s) {string.Join(",", one_trade_ids)}, whose quantity ({one_quantity}) does not match IB quantity ({ib_position.quantity}):");
                 Console.WriteLine($"{one_key.Symbol}\t{one_key.OptionType}\tquantity: {one_quantity}\texpiration: {one_key.Expiration}\tstrike: {one_key.Strike}");
+                rc = false;
             }
 
             // save one position reference in ib position
@@ -1090,14 +1094,16 @@ static class Program
                 {
                     Console.WriteLine($"\n***Error*** IB has a {position.optionType} position with no matching position in ONE");
                     DisplayIBPosition(position);
+                    rc = false;
                 }
             }
         }
-        return true;
+
+        return rc;
     }
 
     // make sure that any Index position in ONE is matched by stock/futures positionin IB and vice versa
-    static void VerifyStockPositions()
+    static bool VerifyStockPositions()
     {
         // get ONE consolidated index position
         // note that net ONE index position could be 0 even if individual ONE trades have index positions
@@ -1125,7 +1131,7 @@ static class Program
         }
 
         if (one_quantity == ib_stock_or_futures_quantity)
-            return;
+            return true;
 
         // at this point, ONE's net Index position does not match IB's net stock/futures position. 
         // note that either position could be 0
@@ -1134,7 +1140,7 @@ static class Program
             Debug.Assert(one_quantity > 0);
             Debug.Assert(one_trade_ids.Count > 0);
             Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade(s) {string.Join(",", one_trade_ids)}, while IB has no matching positions");
-            return;
+            return false;
         }
 
         if (one_quantity == 0)
@@ -1142,7 +1148,7 @@ static class Program
             Debug.Assert(ib_stock_or_futures_quantity > 0);
             Console.WriteLine($"\n***Error*** IB has stock/futures positions of {ib_stock_or_futures_quantity} equivalent {master_symbol} shares, while ONE has no matching positions");
             // todo: list IB positions
-            return;
+            return false;
         }
 
         // at this point, both ONE and IB have index positions...just not same quantity
@@ -1151,6 +1157,7 @@ static class Program
         Debug.Assert(one_quantity != 0);
         Debug.Assert(ib_stock_or_futures_quantity != one_quantity);
         Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade(s) {string.Join(",", one_trade_ids)}, while IB has {ib_stock_or_futures_quantity} equivalent {master_symbol} shares");
+        return false;
     }
 
     const char delimiter = ',';
