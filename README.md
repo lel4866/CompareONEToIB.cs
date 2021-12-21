@@ -9,7 +9,7 @@ button and when the Trader Workstation Configuration dialog pops up, make sure t
 and  Include "Exchange" column, Include "Account" column, Include "Account" column, and Include "Account Number" column
 are unchecked
 
-This is what the data looks like:
+This is what the IB data looks like:
 
 ```
 Portfolio
@@ -24,7 +24,7 @@ The ONE data is exported by opening ONE, clicking on Reports, then on the Report
 and selecting the account that holds the trades you want to compare with, then clicking the Export button and saving the file.
 **Make sure that the Report Type dropdown is set to Detail.**
 
-This is what the data looks like:
+This is what the ONE data looks like:
 
 ```
 ONE Detail Report
