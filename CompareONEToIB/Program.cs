@@ -202,8 +202,6 @@ static class Program
     // consolidated ONE positions; key is (symbol, OptionType, Expiration, Strike); value is (quantity, HashSet<string>); string is trade id 
     static SortedDictionary<OptionKey, (int, HashSet<string>)> consolidatedOnePositions = new();
 
-    static int master_rc = 0; // master return code
-
     static int Main(string[] args)
     {
         var stopWatch = new Stopwatch();
@@ -825,11 +823,11 @@ static class Program
                 switch (key.OptionType)
                 {
                     case OptionType.Stock:
-                        Console.WriteLine($"Stock: {quantity} {master_symbol} shares");
+                        Console.WriteLine($"{master_symbol}\tIndex\tquantity: {quantity}");
                         break;
                     case OptionType.Put:
                     case OptionType.Call:
-                        Console.WriteLine($"{key.Symbol} {key.OptionType} Option: {quantity} {key.Expiration} {key.Strike}");
+                        Console.WriteLine($"{key.Symbol}\t{key.OptionType}\tquantity: {quantity}\texpiration: {key.Expiration}\tstrike: {key.Strike}");
                         break;
                     default:
                         Debug.Assert(false, $"Invalid key.OptionType in ONE_trades: {key.OptionType}");
@@ -1259,21 +1257,15 @@ static class Program
 
         foreach ((OptionKey one_key, (int quantity, HashSet<string> trades)) in consolidatedOnePositions)
         {
-            //if (quantity == 0)
-            //    continue;
-            string trade_str = "trade";
-            if (trades.Count > 1)
-                trade_str = "trades";
-
             switch (one_key.OptionType)
             {
                 case OptionType.Stock:
-                    Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: quantity={quantity}, {trade_str}={string.Join(",", trades)}");
+                    Console.WriteLine($"{one_key.Symbol}\tIndex\tquantity: {quantity}\ttrade(s): {string.Join(",", trades)}");
                     break;
                 case OptionType.Call:
                 case OptionType.Put:
                     // create trades list
-                    Console.WriteLine($"{one_key.Symbol} {one_key.OptionType}: expiration={one_key.Expiration}, strike={one_key.Strike}, quantity={quantity}, {trade_str}={string.Join(",", trades)}");
+                    Console.WriteLine($"{one_key.Symbol}\t{one_key.OptionType}\tquantity: {quantity}\texpiration: {one_key.Expiration}\tstrike: {one_key.Strike}\ttrade(s): {string.Join(",", trades)}");
                     break;
             }
         }
