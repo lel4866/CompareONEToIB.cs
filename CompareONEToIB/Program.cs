@@ -211,14 +211,19 @@ static class Program
         CommandLine.ProcessCommandLineArguments(args);
         Console.WriteLine($"CompareONEToIB Version {version}, {version_date}. Processing trades for {master_symbol}");
 
-        bool rc = ReadONEData();
+        string? one_filename = GetONEFileName();
+        string? ib_filename = GetIBFileName();
+        if (one_filename == null || ib_filename == null)
+            return -1;
+
+        bool rc = ProcessONEFile(one_filename);
         if (!rc)
             return -1;
 
         // display ONE positions
         DisplayONEPositions();
 
-        rc = ReadIBData();
+        rc = ProcessIBFile(ib_filename);
         if (!rc)
             return -1;
 
@@ -235,7 +240,7 @@ static class Program
         return 0;
     }
 
-    static bool ReadONEData()
+    static string? GetONEFileName()
     {
         const string ending = "-ONEDetailReport.csv";
         string[] files;
@@ -258,30 +263,22 @@ static class Program
                         latest_full_filename = full_filename;
                     }
                 }
-                else
-                {
-                    continue;
-                }
             }
+
             if (!file_found)
             {
                 Console.WriteLine("\n***Error*** No valid OptionNet files found");
-                return false;
+                return null;
             }
 
-            bool rc = ProcessONEFile(latest_full_filename);
-            if (!rc)
-                return false;
-        }
-        else
-        {
-            return false;
+            return latest_full_filename;
         }
 
-        return true;
+        Console.WriteLine($"\n***Error*** Specified ONE directory: {one_directory} does not exist");
+        return null;
     }
 
-    static bool ReadIBData()
+    static string? GetIBFileName()
     {
         const string filename_pattern = "*.csv"; // file names look like: portfolio.20211208.csv
         const string filename_prefix = "portfolio."; // file names look like: portfolio.20211208.csv
@@ -336,19 +333,14 @@ static class Program
             if (!file_found)
             {
                 Console.WriteLine("\n***Error*** No valid IB files found");
-                return false;
+                return null;
             }
 
-            bool rc = ProcessIBFile(latest_full_filename);
-            if (!rc)
-                return false;
-        }
-        else
-        {
-            return false;
+            return latest_full_filename;
         }
 
-        return true;
+        Console.WriteLine($"\n***Error*** Specified IB directory: {ib_directory} does not exist");
+        return null;
     }
 
     //Portfolio
@@ -356,7 +348,7 @@ static class Program
     //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
     static bool ProcessIBFile(string full_filename)
     {
-        Console.WriteLine("\nProcessing IB file: " + full_filename);
+        Console.WriteLine("Processing IB file: " + full_filename + '\n');
         string[] lines = File.ReadAllLines(full_filename);
         if (lines.Length < 3)
         {
