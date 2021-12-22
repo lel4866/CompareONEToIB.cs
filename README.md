@@ -3,13 +3,15 @@
 This program compares exported data from OptioneNet Explorer (ONE) to that from Interactive Brokers(IB) to make
 sure that the option positions actually held in IB are the ones that are beng modeled by ONE.
 
+## Exporting the IB data
+
 The IB data is exported by running IB's Trader WorkStation, opening the Account Window, going to the File menu
 and selecting Export Portfolio. When the Export Portfolio/Save dialog pops up, click the Configure Export Settings...
 button and when the Trader Workstation Configuration dialog pops up, make sure that Advanced Contract display is checked
 and  Include "Exchange" column, Include "Account" column, Include "Account" column, and Include "Account Number" column
 are unchecked
 
-## This is what the IB data looks like:
+### This is what the IB data looks like:
 
 ```
 Portfolio
@@ -20,11 +22,13 @@ SPX    APR2022 3250 P [SPXW  220429P03250000 100],2,USD,25.7420445,5148.41,27.58
 SPX    APR2022 4325 P [SPX   220414P04325000 100],2,USD,111.5892257,22317.85,109.4212135,433.60,0.00,No,OPT,-248012.63
 ```
 
+## Exporting the ONE data
+
 The ONE data is exported by opening ONE, clicking on Reports, then on the Reports window, clicking on the little filter icon on the Account dropdown
 and selecting the account that holds the trades you want to compare with, then clicking the Export button and saving the file.
 **Make sure that the Report Type dropdown is set to Detail.**
 
-## This is what the ONE data looks like:
+### This is what the ONE data looks like:
 
 ```
 ONE Detail Report
