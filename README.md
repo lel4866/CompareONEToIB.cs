@@ -9,7 +9,7 @@ button and when the Trader Workstation Configuration dialog pops up, make sure t
 and  Include "Exchange" column, Include "Account" column, Include "Account" column, and Include "Account Number" column
 are unchecked
 
-This is what the IB data looks like:
+##This is what the IB data looks like:
 
 ```
 Portfolio
@@ -24,7 +24,7 @@ The ONE data is exported by opening ONE, clicking on Reports, then on the Report
 and selecting the account that holds the trades you want to compare with, then clicking the Export button and saving the file.
 **Make sure that the Report Type dropdown is set to Detail.**
 
-This is what the ONE data looks like:
+##This is what the ONE data looks like:
 
 ```
 ONE Detail Report
@@ -43,7 +43,7 @@ IB1
 ,,"IB1",285,10/11/2021 3:58:48 PM,Buy,1,SPXW  211204P03000000,12/3/2021,Put,SPX Dec21 3000 Put,SPX,2.7,1.5
 ```
 
-This is sample output: 
+##This is sample output: 
 
 ```
 >.\CompareONEToIB.exe -s spx -id C:\Users\lel48\OneDrive\Documents\IBExport -od C:\Users\lel48\OneDrive\Documents\ONEExport > output.txt
@@ -197,4 +197,3 @@ SPXW Put     quantity: 2    expiration: 4/29/2022    strike: 3400
 ***Error*** IB has a Put position with no matching position in ONE
 SPX  Put     quantity: 2    expiration: 4/14/2022    strike: 3350
 ```
-
