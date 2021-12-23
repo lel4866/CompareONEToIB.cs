@@ -134,7 +134,7 @@ public class OptionKey : IComparable<OptionKey>
             return 1; // other is stock/future; stocks/futures come before options
 
         // this and other are both options; sort by expiration, then strike, then symbol (like SPX, SPXW), finally type (put/Call)
-
+#if true
         if (other.Expiration != this.Expiration)
             return Expiration.CompareTo(other.Expiration);
         else if (other.Strike != Strike)
@@ -143,6 +143,16 @@ public class OptionKey : IComparable<OptionKey>
             return other.Symbol.CompareTo(Symbol);
         else // this 
             return OptionType.CompareTo(other.OptionType);
+#else
+        if (other.Symbol != this.Symbol)
+            return Symbol.CompareTo(other.Symbol);
+        else if (other.Strike != Strike)
+            return Strike.CompareTo(other.Strike);
+        else if (other.Expiration != Expiration)
+            return other.Expiration.CompareTo(Expiration);
+        else // this 
+            return OptionType.CompareTo(other.OptionType);
+#endif
     }
 }
 
@@ -284,69 +294,89 @@ static class Program
     static string? GetIBFileName()
     {
         const string filename_pattern = "*.csv"; // file names look like: portfolio.20211208.csv
-        const string filename_prefix = "portfolio."; // file names look like: portfolio.20211208.csv
-        int filename_prefix_len = filename_prefix.Length;
+        const string portfolio_prefix = "portfolio."; // file names look like: portfolio.20211208.csv
+        const string filtered_portfolio_prefix = "filtered_portfolio."; // file names look like: portfolio.20211208.csv
+        int filename_prefix1_len = portfolio_prefix.Length;
+        int filename_prefix2_len = filtered_portfolio_prefix.Length;
+        bool latest_full_filename_is_filtered_portfolio = false;
 
         string[] files;
         if (Directory.Exists(ib_directory))
         {
-            DateTime latestDate = new(1000, 1, 1);
+            DateOnly latestDate = new(1000, 1, 1);
             string latest_full_filename = "";
+
             files = Directory.GetFiles(ib_directory, filename_pattern, SearchOption.TopDirectoryOnly);
             bool file_found = false;
             bool warning = false;
             foreach (string full_filename in files)
             {
                 string filename = Path.GetFileName(full_filename);
-                if (!filename.StartsWith(filename_prefix))
-                {
-                    if (!warning) Console.WriteLine();
-                    warning = true;
-                    Console.WriteLine($"***Warning*** CSV file found in IB directory that does not match IB filename pattern: {filename}");
+                string datestr;
+                if (filename.StartsWith(portfolio_prefix))
+                    datestr = filename[filename_prefix1_len..];
+                else if (filename.StartsWith(filtered_portfolio_prefix))
+                    datestr = filename[filename_prefix2_len..];
+                else
                     continue;
-                }
-                string datestr = filename[filename_prefix_len..];
+
                 if (datestr.Length != 12) // yyyymmdd.csv
                 {
                     if (!warning) Console.WriteLine();
                     warning = true;
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB filename pattern: {filename}");
+                    Console.WriteLine($"\n***Warning*** csv file found in IB directory that partially matches IB filename pattern ([filtered_]portfolio.yyyymmdd.csv): {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr[..4], out int year))
                 {
                     if (!warning) Console.WriteLine();
                     warning = true;
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB filename pattern: {filename}");
+                    Console.WriteLine($"\n***Warning*** csv file found in IB directory that partially matches IB filename pattern ([filtered_]portfolio.yyyymmdd.csv): {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr.AsSpan(4, 2), out int month))
                 {
                     if (!warning) Console.WriteLine();
                     warning = true;
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB filename pattern: {filename}");
+                    Console.WriteLine($"\n***Warning*** csv file found in IB directory that partially matches IB filename pattern ([filtered_]portfolio.yyyymmdd.csv): {filename}");
                     continue;
                 }
                 if (!int.TryParse(datestr.AsSpan(6, 2), out int day))
                 {
                     if (!warning) Console.WriteLine();
                     warning = true;
-                    Console.WriteLine($"\n***Warning*** CSV file found in IB directory that does not match IB filename patterne: {filename}");
+                    Console.WriteLine($"\n***Warning*** csv file found in IB directory that partially matches IB filename pattern ([filtered_]portfolio.yyyymmdd.csv): {filename}");
                     continue;
                 }
 
                 file_found = true;
-                DateTime dt = new(year, month, day);
+                DateOnly dt = new(year, month, day);
                 if (dt > latestDate)
                 {
                     latestDate = dt;
                     latest_full_filename = full_filename;
+                    latest_full_filename_is_filtered_portfolio = filename.StartsWith(filtered_portfolio_prefix);
+                }
+                else if (dt == latestDate)
+                {
+                    // same dates in filenames...must be one file starts with "filtered_portfolio" and the other with just "portfolio"
+                    Debug.Assert((latest_full_filename_is_filtered_portfolio && filename.StartsWith(portfolio_prefix)) || (!latest_full_filename_is_filtered_portfolio && filename.StartsWith(filtered_portfolio_prefix)));
+
+                    // choose the one with the latest timestamp
+                    DateTime cur_filename_write_date = File.GetLastWriteTime(full_filename);
+                    DateTime saved_filename_write_date = File.GetLastWriteTime(latest_full_filename);
+                    if (cur_filename_write_date >= saved_filename_write_date)
+                    {
+                        latestDate = dt;
+                        latest_full_filename = full_filename;
+                        latest_full_filename_is_filtered_portfolio = filename.StartsWith(filtered_portfolio_prefix);
+                    }
                 }
             }
 
             if (!file_found)
             {
-                Console.WriteLine("\n***Error*** No valid IB files found");
+                Console.WriteLine("\n***Error*** No IB files found with following filename pattern: [filtered_]portfolio.yyyymmdd.csv");
                 return null;
             }
 
@@ -1287,6 +1317,9 @@ static class Program
 
     static void DisplayIBPosition(IBPosition position)
     {
+        if (position.quantity == 0)
+            return; 
+
         switch (position.optionType)
         {
             case OptionType.Stock:
