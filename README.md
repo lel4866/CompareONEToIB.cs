@@ -10,12 +10,15 @@ the current working directory to the one containing this program.
 The required command line arguments are --symbol, --onedir and --ibdir.  
 
 **--symbol** specifies the index whose options will be checked. spx, rut, and ndx are currently supported.
+
 **--onedir** specifies the full path to where your ONE files are saved.
+
 **--ibdir**  specifies the full path to where your IB files are saved.
 
 THere are two optional command line arguments:
 
 **--version** just displays the version of the program.
+
 **--help** displays a short summary of the command line arguments.
 
 Why did I have you specify the directories instead of the actual files? So you can just save newer files to the specified
