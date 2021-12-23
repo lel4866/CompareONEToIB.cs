@@ -58,9 +58,6 @@ IB1
 
 CompareONEToIB Version 0.0.2, 2021-12-17. Processing trades for SPX
 
-***Warning*** CSV file found in IB directory that does not match IB filename pattern: filtered_portfolio.20211214.csv
-***Warning*** CSV file found in IB directory that does not match IB filename pattern: simulated_portfolio.20211214.csv
-
 Processing ONE file: C:\Users\lel48\OneDrive\Documents\ONEExport\2021-12-14-ONEDetailReport.csv
 Processing IB file: C:\Users\lel48\OneDrive\Documents\IBExport\portfolio.20211213.csv
 
