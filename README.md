@@ -8,8 +8,12 @@ sure that the option positions actually held in IB are the ones that are beng mo
 The IB data is exported by running IB's Trader WorkStation, opening the Account Window, going to the File menu
 and selecting Export Portfolio. When the Export Portfolio/Save dialog pops up, click the Configure Export Settings...
 button and when the Trader Workstation Configuration dialog pops up, make sure that Advanced Contract display is checked
-and  Include "Exchange" column, Include "Account" column, Include "Account" column, and Include "Account Number" column
-are unchecked
+and  Include "Exchange" column, Include Account" column, and Include Account Number" column are unchecked. Depending on
+whether or not you checked "Show zero positions row" in the Portfolio section of the Account window, the exported file
+name will start with "portfolio" or "filtered_portfolio". When this program is searching for the IB file to process, it
+allows both, and if two files exist with the same date in the filename (yyyymmdd), where one starts with "portfolio" and
+the other starts with "filtered_portfolio", the file with the lastest modified time stamp will be used. Thios program displays
+the names of the files selected for processing. *Please verify that the ones chosen are the ones you want!*
 
 ### This is what the IB data looks like:
 
