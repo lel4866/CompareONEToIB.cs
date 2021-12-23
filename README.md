@@ -15,7 +15,7 @@ The required command line arguments are --symbol, --onedir and --ibdir.
 
 **--ibdir**  specifies the full path to where your IB files are saved.
 
-THere are two optional command line arguments:
+There are two optional command line arguments:
 
 **--version** just displays the version of the program.
 
@@ -23,7 +23,7 @@ THere are two optional command line arguments:
 
 Why did I have you specify the directories instead of the actual files? So you can just save newer files to the specified
 directory without changing the command line arguments. The program automatically selects 
-the files with the latest dates (by default, both ONE and IB embed the date when they export the files). 
+the files with the latest dates (by default, both ONE and IB embed the date in the file name when they export the files). 
 
 There are short names for each of the commands: -s, -od, -id, -v, and -h.
 
