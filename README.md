@@ -3,6 +3,27 @@
 This program compares exported data from OptioneNet Explorer (ONE) to that from Interactive Brokers(IB) to make
 sure that the option positions actually held in IB are the ones that are beng modeled by ONE.
 
+## Command Line
+This program is run from the command line, so you must open a terminal and either have this program on your PATH or change
+the current working directory to the one containing this program.
+
+The required command line arguments are --symbol, --onedir and --ibdir.  
+
+**--symbol** specifies the index whose options will be checked. spx, rut, and ndx are currently supported.
+**--onedir** specifies the full path to where your ONE files are saved.
+**--ibdir**  specifies the full path to where your IB files are saved.
+
+THere are two optional command line arguments:
+
+**--version** just displays the version of the program.
+**--help** displays a short summary of the command line arguments.
+
+Why did I have you specify the directories instead of the actual files? So you can just save newer files to the specified
+directory without changing the command line arguments. The program automatically selects 
+the files with the latest dates (by default, both ONE and IB embed the date when they export the files). 
+
+There are short names for each of the commands: -s, -od, -id, -v, and -h.
+
 ## Exporting the IB data
 
 The IB data is exported by running IB's Trader WorkStation, opening the Account Window, going to the File menu

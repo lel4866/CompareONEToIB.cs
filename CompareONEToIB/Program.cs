@@ -308,7 +308,6 @@ static class Program
 
             files = Directory.GetFiles(ib_directory, filename_pattern, SearchOption.TopDirectoryOnly);
             bool file_found = false;
-            bool warning = false;
             foreach (string full_filename in files)
             {
                 string filename = Path.GetFileName(full_filename);
@@ -321,33 +320,13 @@ static class Program
                     continue;
 
                 if (datestr.Length != 12) // yyyymmdd.csv
-                {
-                    if (!warning) Console.WriteLine();
-                    warning = true;
-                    Console.WriteLine($"\n***Warning*** csv file found in IB directory that partially matches IB filename pattern ([filtered_]portfolio.yyyymmdd.csv): {filename}");
                     continue;
-                }
                 if (!int.TryParse(datestr[..4], out int year))
-                {
-                    if (!warning) Console.WriteLine();
-                    warning = true;
-                    Console.WriteLine($"\n***Warning*** csv file found in IB directory that partially matches IB filename pattern ([filtered_]portfolio.yyyymmdd.csv): {filename}");
                     continue;
-                }
                 if (!int.TryParse(datestr.AsSpan(4, 2), out int month))
-                {
-                    if (!warning) Console.WriteLine();
-                    warning = true;
-                    Console.WriteLine($"\n***Warning*** csv file found in IB directory that partially matches IB filename pattern ([filtered_]portfolio.yyyymmdd.csv): {filename}");
                     continue;
-                }
                 if (!int.TryParse(datestr.AsSpan(6, 2), out int day))
-                {
-                    if (!warning) Console.WriteLine();
-                    warning = true;
-                    Console.WriteLine($"\n***Warning*** csv file found in IB directory that partially matches IB filename pattern ([filtered_]portfolio.yyyymmdd.csv): {filename}");
                     continue;
-                }
 
                 file_found = true;
                 DateOnly dt = new(year, month, day);
