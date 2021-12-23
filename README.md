@@ -13,7 +13,7 @@ whether or not you checked "Show zero positions row" in the Portfolio section of
 name will start with "portfolio" or "filtered_portfolio". When this program is searching for the IB file to process, it
 allows both, and if two files exist with the same date in the filename (yyyymmdd), where one starts with "portfolio" and
 the other starts with "filtered_portfolio", the file with the lastest modified time stamp will be used. Thios program displays
-the names of the files selected for processing. *Please verify that the ones chosen are the ones you want!*
+the names of the files selected for processing. **Please verify that the ones chosen are the ones you want!**
 
 ### This is what the IB data looks like:
 
