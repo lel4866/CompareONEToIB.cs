@@ -21,10 +21,11 @@ There are two optional command line arguments:
 
 **--help** displays a short summary of the command line arguments.
 
-Sample command line:
+Sample command lines:
 
 ```
-./CompareONEToIB.exe -s spx -id C:\Users\lel48\OneDrive\Documents\IBExport -od C:\Users\lel48\OneDrive\Documents\ONEExport
+./CompareONEToIB.exe -s spx -id C:\Users\username\IBExport -od C:\Users\username\ONEExport > output.txt
+./CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
 ```
 
 Why did I have you specify the directories instead of the actual files? So you can just save newer files to the specified
@@ -84,7 +85,7 @@ IB1
 ## This is sample output: 
 
 ```
->.\CompareONEToIB.exe -s spx -id C:\Users\lel48\OneDrive\Documents\IBExport -od C:\Users\lel48\OneDrive\Documents\ONEExport > output.txt
+>.\CompareONEToIB.exe -s spx -id C:\Users\username\IBExport -od C:\Users\username\ONEExport > output.txt
 
 CompareONEToIB Version 0.0.2, 2021-12-17. Processing trades for SPX
 
