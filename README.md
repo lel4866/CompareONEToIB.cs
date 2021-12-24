@@ -21,6 +21,12 @@ There are two optional command line arguments:
 
 **--help** displays a short summary of the command line arguments.
 
+Sample command line:
+
+```
+./CompareONEToIB.exe -s spx -id C:\Users\lel48\OneDrive\Documents\IBExport -od C:\Users\lel48\OneDrive\Documents\ONEExport
+```
+
 Why did I have you specify the directories instead of the actual files? So you can just save newer files to the specified
 directory without changing the command line arguments. The program automatically selects 
 the files with the latest dates (by default, both ONE and IB embed the date in the file name when they export the files). 
