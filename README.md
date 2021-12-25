@@ -21,8 +21,15 @@ There are two optional command line arguments:
 
 **--help** displays a short summary of the command line arguments.
 
-Sample command lines:
+There are short names for each of the commands: -s, -od, -id, -v, and -h.
 
+Sample command lines (fr0m Windows Command Prompt):
+```
+CompareONEToIB.exe -s spx -id C:\Users\username\IBExport -od C:\Users\username\ONEExport > output.txt
+CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
+```
+
+Sample command lines (frm Windows Power Shell):
 ```
 ./CompareONEToIB.exe -s spx -id C:\Users\username\IBExport -od C:\Users\username\ONEExport > output.txt
 ./CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
@@ -31,8 +38,6 @@ Sample command lines:
 Why did I have you specify the directories instead of the actual files? So you can just save newer files to the specified
 directory without changing the command line arguments. The program automatically selects 
 the files with the latest dates (by default, both ONE and IB embed the date in the file name when they export the files). 
-
-There are short names for each of the commands: -s, -od, -id, -v, and -h.
 
 ## Exporting the IB data
 
