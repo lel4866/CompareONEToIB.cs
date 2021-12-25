@@ -23,13 +23,13 @@ There are two optional command line arguments:
 
 There are short names for each of the commands: -s, -od, -id, -v, and -h.
 
-Sample command lines (fr0m Windows Command Prompt):
+Sample command lines (from Windows Command Prompt):
 ```
 CompareONEToIB.exe -s spx -id C:\Users\username\IBExport -od C:\Users\username\ONEExport > output.txt
 CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
 ```
 
-Sample command lines (frm Windows Power Shell):
+Sample command lines (from Windows Power Shell):
 ```
 ./CompareONEToIB.exe -s spx -id C:\Users\username\IBExport -od C:\Users\username\ONEExport > output.txt
 ./CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
