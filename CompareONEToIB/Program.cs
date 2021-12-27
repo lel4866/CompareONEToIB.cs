@@ -177,8 +177,8 @@ class IBPosition
 
 static class Program
 {
-    internal const string version = "0.0.2";
-    internal const string version_date = "2021-12-17";
+    internal const string version = "0.0.3";
+    internal const string version_date = "2021-12-27";
     internal static string? ib_filename = null;
     internal static string? one_filename = null;
     internal static string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
