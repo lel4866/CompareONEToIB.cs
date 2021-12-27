@@ -179,6 +179,8 @@ static class Program
 {
     internal const string version = "0.0.2";
     internal const string version_date = "2021-12-17";
+    internal static string? ib_filename = null;
+    internal static string? one_filename = null;
     internal static string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
     internal static string one_directory = @"C:\Users\lel48\OneDrive\Documents\ONEExport\";
 
@@ -222,8 +224,10 @@ static class Program
         CommandLine.ProcessCommandLineArguments(args);
         Console.WriteLine($"CompareONEToIB Version {version}, {version_date}. Processing trades for {master_symbol}");
 
-        string? one_filename = GetONEFileName();
-        string? ib_filename = GetIBFileName();
+        if (one_filename == null)
+            one_filename = GetONEFileName();
+        if (ib_filename == null)
+            ib_filename = GetIBFileName();
         if (one_filename == null || ib_filename == null)
             return -1;
         Console.WriteLine("\nProcessing ONE file: " + one_filename);
@@ -255,44 +259,49 @@ static class Program
 
     static string? GetONEFileName()
     {
+        Debug.Assert(Directory.Exists(one_directory));
+
         const string ending = "-ONEDetailReport.csv";
         string[] files;
-        if (Directory.Exists(one_directory))
+
+        DateTime latestDate = new(1000, 1, 1);
+        string latest_full_filename = "";
+        files = Directory.GetFiles(one_directory, '*' + ending, SearchOption.TopDirectoryOnly);
+        bool file_found = false;
+        foreach (string full_filename in files)
         {
-            DateTime latestDate = new(1000, 1, 1);
-            string latest_full_filename = "";
-            files = Directory.GetFiles(one_directory, '*' + ending, SearchOption.TopDirectoryOnly);
-            bool file_found = false;
-            foreach (string full_filename in files)
+            string filename = Path.GetFileName(full_filename);
+            string datestr = filename[..^ending.Length];
+            if (DateTime.TryParse(datestr, out DateTime dt))
             {
-                string filename = Path.GetFileName(full_filename);
-                string datestr = filename[..^ending.Length];
-                if (DateTime.TryParse(datestr, out DateTime dt))
+                file_found = true;
+                if (dt > latestDate)
                 {
-                    file_found = true;
-                    if (dt > latestDate)
-                    {
-                        latestDate = dt;
-                        latest_full_filename = full_filename;
-                    }
+                    latestDate = dt;
+                    latest_full_filename = full_filename;
                 }
             }
-
-            if (!file_found)
-            {
-                Console.WriteLine("\n***Error*** No valid OptionNet files found");
-                return null;
-            }
-
-            return latest_full_filename;
         }
 
-        Console.WriteLine($"\n***Error*** Specified ONE directory: {one_directory} does not exist");
+        if (!file_found)
+        {
+            Console.WriteLine("\n***Error*** No valid ONE files found");
+            return null;
+        }
+
+        return latest_full_filename;
+
+        if (File.Exists(one_directory))
+            Console.WriteLine($"\n***Error*** Specified ONE directory: {one_directory} is a file, not a directory");
+        else
+            Console.WriteLine($"\n***Error*** Specified ONE directory: {one_directory} does not exist");
         return null;
     }
 
     static string? GetIBFileName()
     {
+        Debug.Assert(Directory.Exists(ib_directory));
+
         const string filename_pattern = "*.csv"; // file names look like: portfolio.20211208.csv
         const string portfolio_prefix = "portfolio."; // file names look like: portfolio.20211208.csv
         const string filtered_portfolio_prefix = "filtered_portfolio."; // file names look like: portfolio.20211208.csv
@@ -301,68 +310,68 @@ static class Program
         bool latest_full_filename_is_filtered_portfolio = false;
 
         string[] files;
-        if (Directory.Exists(ib_directory))
+        DateOnly latestDate = new(1000, 1, 1);
+        string latest_full_filename = "";
+
+        files = Directory.GetFiles(ib_directory, filename_pattern, SearchOption.TopDirectoryOnly);
+        bool file_found = false;
+        foreach (string full_filename in files)
         {
-            DateOnly latestDate = new(1000, 1, 1);
-            string latest_full_filename = "";
+            string filename = Path.GetFileName(full_filename);
+            string datestr;
+            if (filename.StartsWith(portfolio_prefix))
+                datestr = filename[filename_prefix1_len..];
+            else if (filename.StartsWith(filtered_portfolio_prefix))
+                datestr = filename[filename_prefix2_len..];
+            else
+                continue;
 
-            files = Directory.GetFiles(ib_directory, filename_pattern, SearchOption.TopDirectoryOnly);
-            bool file_found = false;
-            foreach (string full_filename in files)
+            if (datestr.Length != 12) // yyyymmdd.csv
+                continue;
+            if (!int.TryParse(datestr[..4], out int year))
+                continue;
+            if (!int.TryParse(datestr.AsSpan(4, 2), out int month))
+                continue;
+            if (!int.TryParse(datestr.AsSpan(6, 2), out int day))
+                continue;
+
+            file_found = true;
+            DateOnly dt = new(year, month, day);
+            if (dt > latestDate)
             {
-                string filename = Path.GetFileName(full_filename);
-                string datestr;
-                if (filename.StartsWith(portfolio_prefix))
-                    datestr = filename[filename_prefix1_len..];
-                else if (filename.StartsWith(filtered_portfolio_prefix))
-                    datestr = filename[filename_prefix2_len..];
-                else
-                    continue;
+                latestDate = dt;
+                latest_full_filename = full_filename;
+                latest_full_filename_is_filtered_portfolio = filename.StartsWith(filtered_portfolio_prefix);
+            }
+            else if (dt == latestDate)
+            {
+                // same dates in filenames...must be one file starts with "filtered_portfolio" and the other with just "portfolio"
+                Debug.Assert((latest_full_filename_is_filtered_portfolio && filename.StartsWith(portfolio_prefix)) || (!latest_full_filename_is_filtered_portfolio && filename.StartsWith(filtered_portfolio_prefix)));
 
-                if (datestr.Length != 12) // yyyymmdd.csv
-                    continue;
-                if (!int.TryParse(datestr[..4], out int year))
-                    continue;
-                if (!int.TryParse(datestr.AsSpan(4, 2), out int month))
-                    continue;
-                if (!int.TryParse(datestr.AsSpan(6, 2), out int day))
-                    continue;
-
-                file_found = true;
-                DateOnly dt = new(year, month, day);
-                if (dt > latestDate)
+                // choose the one with the latest timestamp
+                DateTime cur_filename_write_date = File.GetLastWriteTime(full_filename);
+                DateTime saved_filename_write_date = File.GetLastWriteTime(latest_full_filename);
+                if (cur_filename_write_date >= saved_filename_write_date)
                 {
                     latestDate = dt;
                     latest_full_filename = full_filename;
                     latest_full_filename_is_filtered_portfolio = filename.StartsWith(filtered_portfolio_prefix);
                 }
-                else if (dt == latestDate)
-                {
-                    // same dates in filenames...must be one file starts with "filtered_portfolio" and the other with just "portfolio"
-                    Debug.Assert((latest_full_filename_is_filtered_portfolio && filename.StartsWith(portfolio_prefix)) || (!latest_full_filename_is_filtered_portfolio && filename.StartsWith(filtered_portfolio_prefix)));
-
-                    // choose the one with the latest timestamp
-                    DateTime cur_filename_write_date = File.GetLastWriteTime(full_filename);
-                    DateTime saved_filename_write_date = File.GetLastWriteTime(latest_full_filename);
-                    if (cur_filename_write_date >= saved_filename_write_date)
-                    {
-                        latestDate = dt;
-                        latest_full_filename = full_filename;
-                        latest_full_filename_is_filtered_portfolio = filename.StartsWith(filtered_portfolio_prefix);
-                    }
-                }
             }
-
-            if (!file_found)
-            {
-                Console.WriteLine("\n***Error*** No IB files found with following filename pattern: [filtered_]portfolio.yyyymmdd.csv");
-                return null;
-            }
-
-            return latest_full_filename;
         }
 
-        Console.WriteLine($"\n***Error*** Specified IB directory: {ib_directory} does not exist");
+        if (!file_found)
+        {
+            Console.WriteLine("\n***Error*** No IB files found with following filename pattern: [filtered_]portfolio.yyyymmdd.csv");
+            return null;
+        }
+
+        return latest_full_filename;
+
+        if (File.Exists(ib_directory))
+            Console.WriteLine($"\n***Error*** Specified IB directory: {one_directory} is a file, not a directory");
+        else
+            Console.WriteLine($"\n***Error*** Specified IB directory: {ib_directory} does not exist");
         return null;
     }
 
@@ -1297,7 +1306,7 @@ static class Program
     static void DisplayIBPosition(IBPosition position)
     {
         if (position.quantity == 0)
-            return; 
+            return;
 
         switch (position.optionType)
         {

@@ -11,9 +11,15 @@ The required command line arguments are --symbol, --onedir and --ibdir.
 
 **--symbol** specifies the index whose options will be checked. spx, rut, and ndx are currently supported.
 
+**--onefile** specifies the full path to the ONE file to be processed.
+
+**--ibfile**  specifies the full path to the IB file to be processed.
+
 **--onedir** specifies the full path to where your ONE files are saved.
 
 **--ibdir**  specifies the full path to where your IB files are saved.
+
+**obviously, you cannot specify both a file and a directory
 
 There are two optional command line arguments:
 
