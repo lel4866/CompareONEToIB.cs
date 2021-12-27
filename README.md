@@ -9,19 +9,19 @@ the current working directory to the one containing this program.
 
 The required command line arguments are --symbol, --onedir and --ibdir.  
 
-**--symbol** specifies the index whose options will be checked. spx, rut, and ndx are currently supported.
+**--symbol** specifies the index whose options will be checked. spx, rut, and ndx are currently supported. This
+also determines the symbols for the stock/futures positions that will be taken into account.
 
-**--onefile** specifies the name (including path if necessary) to the ONE file to be processed.
+**--onefile** specifies the name (including path if necessary) of the ONE file to be processed.
 
-**--onedir** specifies the path to the directory where your ONE files are saved.
+**--onedir** can be used instead of --onefile. It specifies a directory where your ONE files are saved.
 
-**--ibfile**  specifies the name (including path if necessary) to the IB file to be processed.
+**--ibfile** specifies the name (including path if necessary) of the IB file to be processed.
 
-**--ibdir**  specifies the path to the directory where your IB files are saved.
+**--ibdir** can be used instead of --ibfile, It specifies a directory where your IB files are saved.
 
-If you specify a directory instead of a file, the program will search for the latest file in the directory whose name matches 
+If you specify a directory (--onedir, --ibdir) instead of a file, the program will use the latest file in the directory whose name matches 
 the proper pattern (yyyy-mm-dd-ONEDetailReport.csv for ONE, and portfolio.yyyymmdd.csv or filtered_portfolio.yyyymmdd.csv for IB). 
-You cannot specify both a file and a directory for the same type (ONE, IB).
 
 There are two optional command line arguments:
 
@@ -43,9 +43,9 @@ Sample command lines (from Windows Power Shell):
 ./CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
 ```
 
-Why can you specify the directories instead of the actual files? So you can just save newer files to the specified
+Why specify the directories instead of the actual files? So you can just save newer files to the 
 directory without changing the command line arguments. The program automatically selects 
-the files with the latest dates (by default, both ONE and IB embed the date in the file name when they export the files). 
+the files with the latest dates embedded in the filenames (It does not check the actual OS time stamp). 
 
 ## Exporting the IB data
 
@@ -58,6 +58,8 @@ name will start with "portfolio" or "filtered_portfolio". When this program is s
 accepts either, and if two files exist with the same date in the filename (yyyymmdd), where one starts with "portfolio" and
 the other starts with "filtered_portfolio", the file with the lastest modified time stamp will be used. This program displays
 the names of the files selected for processing. **You must verify that the ones chosen are the ones you want!**
+
+![IB Save Portfolio Window](IBExport.png)
 
 ### This is what the IB data looks like:
 
