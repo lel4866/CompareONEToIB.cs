@@ -58,7 +58,6 @@ name will start with "portfolio" or "filtered_portfolio". When this program is s
 accepts either, and if two files exist with the same date in the filename (yyyymmdd), where one starts with "portfolio" and
 the other starts with "filtered_portfolio", the file with the lastest modified time stamp will be used. This program displays
 the names of the files selected for processing. **You must verify that the ones chosen are the ones you want!**
-
 ![IB Save Portfolio Window](IBExport.png)
 
 ### This is what the IB data looks like:
