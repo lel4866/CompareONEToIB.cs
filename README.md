@@ -11,16 +11,16 @@ The required command line arguments are --symbol, --onedir and --ibdir.
 
 **--symbol** specifies the index whose options will be checked. spx, rut, and ndx are currently supported.
 
-**--onefile** specifies the full path to the ONE file to be processed.
+**--onefile** specifies the name (including path if necessary) to the ONE file to be processed.
 
-**--ibfile**  specifies the full path to the IB file to be processed.
+**--onedir** specifies the path to the directory where your ONE files are saved.
 
-**--onedir** specifies the full path to where your ONE files are saved.
+**--ibfile**  specifies the name (including path if necessary) to the IB file to be processed.
 
-**--ibdir**  specifies the full path to where your IB files are saved.
+**--ibdir**  specifies the path to the directory where your IB files are saved.
 
 If you specify a directory instead of a file, the program will search for the latest file in the directory whose name matches 
-the proper pattern (yyyy-mm-dd-ONEDetailReport.csv for ONE, and portfolio.yyyymmdd.csv for IB). 
+the proper pattern (yyyy-mm-dd-ONEDetailReport.csv for ONE, and portfolio.yyyymmdd.csv or filtered_portfolio.yyyymmdd.csv for IB). 
 You cannot specify both a file and a directory for the same type (ONE, IB).
 
 There are two optional command line arguments:
@@ -43,7 +43,7 @@ Sample command lines (from Windows Power Shell):
 ./CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
 ```
 
-Why did I have you specify the directories instead of the actual files? So you can just save newer files to the specified
+Why can you specify the directories instead of the actual files? So you can just save newer files to the specified
 directory without changing the command line arguments. The program automatically selects 
 the files with the latest dates (by default, both ONE and IB embed the date in the file name when they export the files). 
 
