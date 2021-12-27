@@ -19,7 +19,9 @@ The required command line arguments are --symbol, --onedir and --ibdir.
 
 **--ibdir**  specifies the full path to where your IB files are saved.
 
-**obviously, you cannot specify both a file and a directory
+If you specify a directory instead of a file, the program will search for the latest file in the directory whose name matches 
+the proper pattern (yyyy-mm-dd-ONEDetailReport.csv for ONE, and portfolio.yyyymmdd.csv for IB). 
+Obviously, you cannot specify both a file and a directory.
 
 There are two optional command line arguments:
 
