@@ -290,12 +290,6 @@ static class Program
         }
 
         return latest_full_filename;
-
-        if (File.Exists(one_directory))
-            Console.WriteLine($"\n***Error*** Specified ONE directory: {one_directory} is a file, not a directory");
-        else
-            Console.WriteLine($"\n***Error*** Specified ONE directory: {one_directory} does not exist");
-        return null;
     }
 
     static string? GetIBFileName()
@@ -367,12 +361,6 @@ static class Program
         }
 
         return latest_full_filename;
-
-        if (File.Exists(ib_directory))
-            Console.WriteLine($"\n***Error*** Specified IB directory: {one_directory} is a file, not a directory");
-        else
-            Console.WriteLine($"\n***Error*** Specified IB directory: {ib_directory} does not exist");
-        return null;
     }
 
     //Portfolio
