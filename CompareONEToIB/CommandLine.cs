@@ -145,10 +145,7 @@ internal static class CommandLine
                                 Console.WriteLine("***Command Line Error*** IB File: " + arg + " does not exist. Program exiting.");
                             exit = true;
                         }
-                        arg_with_backslash = arg;
-                        if (!arg.EndsWith('\\'))
-                            arg_with_backslash += '\\';
-                        Program.ib_filename = arg_with_backslash;
+                        Program.ib_filename = arg;
                         break;
 
                     case "onefile":
@@ -160,10 +157,7 @@ internal static class CommandLine
                                 Console.WriteLine("***Command Line Error*** ONE File: " + arg + " does not exist. Program exiting.");
                             exit = true;
                         }
-                        arg_with_backslash = arg;
-                        if (!arg.EndsWith('\\'))
-                            arg_with_backslash += '\\';
-                        Program.one_filename = arg_with_backslash;
+                        Program.one_filename = arg;
                         break;
 
                     case "ibdir":
@@ -209,15 +203,15 @@ internal static class CommandLine
             exit = true;
         }
 
-        if (!id_specified)
+        if (!id_specified && !if_specified)
         {
-            Console.WriteLine("***Command Line Error*** No IB directory (--ibdir) specified");
+            Console.WriteLine("***Command Line Error*** No IB file or directory (--ibdir) specified");
             exit = true;
         }
 
-        if (!od_specified)
+        if (!od_specified && !of_specified)
         {
-            Console.WriteLine("***Command Line Error*** No ONE directory (--onedir) specified");
+            Console.WriteLine("***Command Line Error*** No ONE file or directory (--onedir) specified");
             exit = true;
         }
 

@@ -2,7 +2,7 @@
   "profiles": {
     "CompareONEToIB": {
       "commandName": "Project",
-      "commandLineArgs": "-s spx -id C:\\Users\\lel48\\OneDrive\\Documents\\IBExport\\portfolio.20211223.csv -od C:\\Users\\lel48\\OneDrive\\Documents\\ONEExport "
+      "commandLineArgs": "-s spx -if C:\\Users\\lel48\\OneDrive\\Documents\\IBExport\\portfolio.20211223.csv -od C:\\Users\\lel48\\OneDrive\\Documents\\ONEExport "
     }
   }
 }
