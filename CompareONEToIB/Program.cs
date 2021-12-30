@@ -446,13 +446,16 @@ static class Program
         // now process each IB position line
         for (int line_index = 2; line_index < lines.Length; line_index++)
         {
-            bool rc = ParseCSVLine(lines[line_index], out List<string> fields);
-            if (!rc)
-                return false;
+            string line = lines[line_index].Trim();
 
             // blank line terminates list of positions. Next line must be "Cash Balances"
-            if (fields.Count == 0)
+            if (line.Length == 0)
                 break;
+
+            bool rc = ParseCSVLine(line, out List<string> fields);
+            if (!rc)
+                return false;
+            Debug.Assert(fields.Count > 0);
 
             if (fields.Count < index_of_last_required_column + 1)
             {
@@ -471,23 +474,6 @@ static class Program
         }
 
         return true;
-    }
-
-    static List<string> ReadAllNonBlankLines(string filename)
-    {
-        List<string> lines = new();
-        using StreamReader reader = new(filename);
-        while (true) 
-        {
-            string? line = reader.ReadLine();
-            if (line == null)
-                break;
-            line = line.Trim();
-            if (line.Length == 0)
-                continue;
-            lines.Add(line);
-        }
-        return lines;
     }
 
     //Financial Instrument Description, Position, Currency, Market Price, Market Value, Average Price, Unrealized P&L, Realized P&L, Liquidate Last, Security Type, Delta Dollars
