@@ -15,8 +15,8 @@ internal static class CommandLine
         bool exit = false;
         bool symbol_specified = false;
         bool id_specified = false;
-        bool od_specified = false;
         bool if_specified = false;
+        bool od_specified = false;
         bool of_specified = false;
         string arg_with_backslash;
 
@@ -51,25 +51,10 @@ internal static class CommandLine
                         }
                         if (id_specified)
                         {
-                            Console.WriteLine("***Command Line Error*** You cannot specify both IB file and IB directory");
+                            Console.WriteLine("***Command Line Error*** You cannot specify both an IB file and an IB directory");
                             exit = true;
                         }
                         if_specified = true;
-                        break;
-                    case "-of":
-                    case "--onefile":
-                        arg_name = "onefile";
-                        if (of_specified)
-                        {
-                            Console.WriteLine("***Command Line Error*** ONE file can only be specified once");
-                            exit = true;
-                        }
-                        if (of_specified)
-                        {
-                            Console.WriteLine("***Command Line Error*** You cannot specify both ONE file and ONE directory");
-                            exit = true;
-                        }
-                        of_specified = true;
                         break;
                     case "-id":
                     case "--ibdir":
@@ -85,6 +70,21 @@ internal static class CommandLine
                             exit = true;
                         }
                         id_specified = true;
+                        break;
+                    case "-of":
+                    case "--onefile":
+                        arg_name = "onefile";
+                        if (of_specified)
+                        {
+                            Console.WriteLine("***Command Line Error*** ONE file can only be specified once");
+                            exit = true;
+                        }
+                        if (of_specified)
+                        {
+                            Console.WriteLine("***Command Line Error*** You cannot specify both ONE file and ONE directory");
+                            exit = true;
+                        }
+                        of_specified = true;
                         break;
                     case "-od":
                     case "--onedir":
@@ -109,10 +109,10 @@ internal static class CommandLine
                         Console.WriteLine("\nCommand line arguments:");
                         Console.WriteLine("    --version, -v : display version number");
                         Console.WriteLine("    --symbol, -s  : specify primary option index symbol; currently, SPX, RUT, or NDX");
-                        Console.WriteLine("    --onefile, -of  : specify file that contains files exported from ONE (of form: yyyy-mm-dd-ONEDetailReport.csv)");
                         Console.WriteLine("    --ibfile, -if  : specify file that contains files exported from IB (of form: portfolio.yyyymmdd.csv)");
-                        Console.WriteLine("    --onedir, -od  : specify directory that contains files exported from ONE (of form: yyyy-mm-dd-ONEDetailReport.csv)");
                         Console.WriteLine("    --ibdir, -id  : specify directory that contains files exported from IB (of form: portfolio.yyyymmdd.csv)");
+                        Console.WriteLine("    --onefile, -of  : specify file that contains files exported from ONE (of form: yyyy-mm-dd-ONEDetailReport.csv)");
+                        Console.WriteLine("    --onedir, -od  : specify directory that contains files exported from ONE (of form: yyyy-mm-dd-ONEDetailReport.csv)");
                         Console.WriteLine("    --help, -h  : display command line argument information");
                         System.Environment.Exit(0);
                         break;
@@ -145,19 +145,7 @@ internal static class CommandLine
                                 Console.WriteLine("***Command Line Error*** IB File: " + arg + " does not exist. Program exiting.");
                             exit = true;
                         }
-                        Program.ib_filename = arg;
-                        break;
-
-                    case "onefile":
-                        if (!File.Exists(arg))
-                        {
-                            if (Directory.Exists(arg))
-                                Console.WriteLine("***Command Line Error*** specified ONE File: " + arg + " is a directory, not a file. Program exiting.");
-                            else
-                                Console.WriteLine("***Command Line Error*** ONE File: " + arg + " does not exist. Program exiting.");
-                            exit = true;
-                        }
-                        Program.one_filename = arg;
+                        Program.broker_filename = arg;
                         break;
 
                     case "ibdir":
@@ -172,7 +160,46 @@ internal static class CommandLine
                         arg_with_backslash = arg;
                         if (!arg.EndsWith('\\'))
                             arg_with_backslash += '\\';
-                        Program.ib_directory = arg_with_backslash;
+                        Program.broker_directory = arg_with_backslash;
+                        break;
+
+                    case "tdafile":
+                        if (!File.Exists(arg))
+                        {
+                            if (Directory.Exists(arg))
+                                Console.WriteLine("***Command Line Error*** specified TDA File: " + arg + " is a directory, not a file. Program exiting.");
+                            else
+                                Console.WriteLine("***Command Line Error*** TDA File: " + arg + " does not exist. Program exiting.");
+                            exit = true;
+                        }
+                        Program.broker_filename = arg;
+                        break;
+
+                    case "tdadir":
+                        if (!Directory.Exists(arg))
+                        {
+                            if (File.Exists(arg))
+                                Console.WriteLine("***Command Line Error*** specified TDA Directory: " + arg + " is a file, not a directory. Program exiting.");
+                            else
+                                Console.WriteLine("***Command Line Error*** TDA Directory: " + arg + " does not exist. Program exiting.");
+                            exit = true;
+                        }
+                        arg_with_backslash = arg;
+                        if (!arg.EndsWith('\\'))
+                            arg_with_backslash += '\\';
+                        Program.broker_directory = arg_with_backslash;
+                        break;
+
+                    case "onefile":
+                        if (!File.Exists(arg))
+                        {
+                            if (Directory.Exists(arg))
+                                Console.WriteLine("***Command Line Error*** specified ONE File: " + arg + " is a directory, not a file. Program exiting.");
+                            else
+                                Console.WriteLine("***Command Line Error*** ONE File: " + arg + " does not exist. Program exiting.");
+                            exit = true;
+                        }
+                        Program.one_filename = arg;
                         break;
 
                     case "onedir":
@@ -217,5 +244,11 @@ internal static class CommandLine
 
         if (exit)
             System.Environment.Exit(-1);
+    }
+
+    internal static void NotImplementedYet(string msg)
+    {
+        Console.WriteLine(msg);
+        System.Environment.Exit(-1);
     }
 }

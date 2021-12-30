@@ -3,6 +3,13 @@
 This program compares exported data from OptioneNet Explorer (ONE) to that from Interactive Brokers(IB) to make
 sure that the option positions actually held in IB are the ones that are beng modeled by ONE.
 
+The program currently supports portfolios that contain index options for SPX, RUT, and NDX, stock positions in SPY, IWM, and QQQ, and
+futures positoons in ES, MES, RTY, M2K, NQ, and MNQ. However analysis can only been done on one class of positions at a time as specified
+by the command line --symbol parameter.
+
+*This program has not been thoroughly tested and likely has bugs. In addition, the data formats used by IB and ONE
+can change without notice, which could cause the program to crash or produce erroneous results. Use at your own risk!*
+
 ## Command Line
 This program is run from the command line, so you must open a terminal and either have this program on your PATH or change
 the current working directory to the one containing this program.
