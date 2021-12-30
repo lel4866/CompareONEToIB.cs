@@ -290,48 +290,6 @@ static class Program
         return latest_full_filename;
     }
 
-    static string? GetTDAFileName()
-    {
-        Debug.Assert(Directory.Exists(broker_directory));
-
-        const string filename_pattern = "????-??-??-PositionStatement.csv"; // file names look like: yyyy-mm-dd-PositionStatement.csv
-
-        string[] files;
-        DateOnly latestDate = new(1000, 1, 1);
-        string latest_full_filename = "";
-
-        files = Directory.GetFiles(broker_directory, filename_pattern, SearchOption.TopDirectoryOnly);
-        bool file_found = false;
-        foreach (string full_filename in files)
-        {
-            string filename = Path.GetFileName(full_filename);
-            string datestr = filename[..10];
-
-            if (!int.TryParse(datestr[..4], out int year))
-                continue;
-            if (!int.TryParse(datestr.AsSpan(5, 2), out int month))
-                continue;
-            if (!int.TryParse(datestr.AsSpan(8, 2), out int day))
-                continue;
-
-            file_found = true;
-            DateOnly dt = new(year, month, day);
-            if (dt > latestDate)
-            {
-                latestDate = dt;
-                latest_full_filename = full_filename;
-            }
-        }
-
-        if (!file_found)
-        {
-            Console.WriteLine("\n***Error*** No TDA Position files found with following filename pattern: yyyy-mm--ddPositionStatement.csv");
-            return null;
-        }
-
-        return latest_full_filename;
-    }
-
     static string? GetIBFileName()
     {
         Debug.Assert(Directory.Exists(broker_directory));

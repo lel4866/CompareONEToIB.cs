@@ -7,8 +7,8 @@ The program currently supports portfolios that contain index options for SPX, RU
 futures positoons in ES, MES, RTY, M2K, NQ, and MNQ. However analysis can only been done on one class of positions at a time as specified
 by the command line --symbol parameter.
 
-*This program has not been thoroughly tested and likely has bugs. In addition, the data formats used by IB and ONE
-can change without notice, which could cause the program to crash or produce erroneous results. Use at your own risk!*
+**This program has not been thoroughly tested and likely has bugs. In addition, the data formats used by IB and ONE
+can change without notice, which could cause the program to crash or produce erroneous results. Use at your own risk!**
 
 ## Command Line
 This program is run from the command line, so you must open a terminal and either have this program on your PATH or change
@@ -65,7 +65,6 @@ name will start with "portfolio" or "filtered_portfolio". When this program is s
 accepts either, and if two files exist with the same date in the filename (yyyymmdd), where one starts with "portfolio" and
 the other starts with "filtered_portfolio", the file with the lastest modified time stamp will be used. This program displays
 the names of the files selected for processing. **You must verify that the ones chosen are the ones you want!**
-![IB Save Portfolio Window](IBExport.png)
 
 ### This is what the IB data looks like:
 
