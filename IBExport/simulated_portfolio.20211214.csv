@@ -1,0 +1,9 @@
+Portfolio
+Financial Instrument Description,Position,Currency,Market Price,Market Value,Average Price,Unrealized P&L,Realized P&L,Liquidate Last,Security Type,Delta Dollars
+SPY,100,USD,463.3319397,46333.19,463.02,31.19,0.00,No,STK,46333.19
+MES      MAR2022,1,USD,4624.50,23122.50,4625.604,-5.52,0.00,No,FUT,23136.14
+
+Cash Balances
+USD,953543,USD
+Total (in USD),953543,USD
+
