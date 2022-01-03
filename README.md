@@ -7,27 +7,30 @@ The program currently supports portfolios that contain index options for SPX, RU
 futures positoons in ES, MES, RTY, M2K, NQ, and MNQ. However analysis can only been done on one class of positions at a time as specified
 by the command line --symbol parameter.
 
-**This program has not been thoroughly tested and likely has bugs. In addition, the data formats used by IB and ONE
+**This program has not been thoroughly tested and likely has bugs. In addition, the file formats used by IB and ONE
 can change without notice, which could cause the program to crash or produce erroneous results. Use at your own risk!**
 
 ## Command Line
 This program is run from the command line, so you must open a terminal and either have this program on your PATH or change
 the current working directory to the one containing this program.
 
-The required command line arguments are --symbol, --onedir and --ibdir.  
+There are no required command line arguments if you are analyzing SPX positions and use the recommended directory structure. That structure assumes
+there are two directories, ONEExport and IBExport in the same folder as this executable, that contain the files exported by ONE and IB respectively.
 
 **--symbol** specifies the index whose options will be checked. spx, rut, and ndx are currently supported. This
-also determines the symbols for the stock/futures positions that will be taken into account.
+also determines the symbols for the stock/futures positions that will be taken into account. The default is spx (case insensitive).
 
-**--onefile** specifies the name (including path if necessary) of the ONE file to be processed.
+**--onedir** specifies a directory where your ONE files are saved. It defaults to a directory named ONEExport in the same
+directory as this executable.
 
-**--onedir** can be used instead of --onefile. It specifies a directory where your ONE files are saved.
+**--onefile** can be used instead of onedir. It specifies the name (including path if necessary) of the ONE file to be processed.
 
-**--ibfile** specifies the name (including path if necessary) of the IB file to be processed.
+**--ibdir** specifies a directory where your IB files are saved. It defaults to a directory named IBExport in the same
+directory as this executable.
 
-**--ibdir** can be used instead of --ibfile, It specifies a directory where your IB files are saved.
+**--ibfile** can be used instead of --ibdir. It specifies the name (including path if necessary) of the IB file to be processed.
 
-If you specify a directory (--onedir, --ibdir) instead of a file, the program will use the latest file in the directory whose name matches 
+If you use a directory (--onedir, --ibdir) instead of a file, the program will use the latest file in the directory whose name matches 
 the proper pattern (yyyy-mm-dd-ONEDetailReport.csv for ONE, and portfolio.yyyymmdd.csv or filtered_portfolio.yyyymmdd.csv for IB). 
 
 There are two optional command line arguments:
@@ -36,21 +39,23 @@ There are two optional command line arguments:
 
 **--help** displays a short summary of the command line arguments.
 
-There are short names for each of the commands: -s, -od, -id, -v, and -h.
+There are short names for each of the commands: -s, -od, -id, -of, -if, -v, and -h.
 
 Sample command lines (from Windows Command Prompt):
 ```
+CompareONEToIB.exe
 CompareONEToIB.exe -s spx -id C:\Users\username\IBExport -od C:\Users\username\ONEExport > output.txt
 CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
 ```
 
 Sample command lines (from Windows Power Shell):
 ```
+./CompareONEToIB.exe
 ./CompareONEToIB.exe -s spx -id C:\Users\username\IBExport -od C:\Users\username\ONEExport > output.txt
 ./CompareONEToIB.exe --symbol spx --ibdir C:\Users\username\IBExport --onedir C:\Users\username\ONEExport
 ```
 
-Why specify the directories instead of the actual files? So you can just save newer files to the 
+Why use directories instead of the specifying the actual files? So you can just save newer files to the 
 directory without changing the command line arguments. The program automatically selects 
 the files with the latest dates embedded in the filenames (It does not check the actual OS time stamp). 
 

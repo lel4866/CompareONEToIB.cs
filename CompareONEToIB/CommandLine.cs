@@ -229,11 +229,8 @@ internal static class CommandLine
             System.Environment.Exit(-1);
 
         if (!symbol_specified)
-        {
             // default is spx
-            symbol_specified = true;
             Program.master_symbol = "spx";
-        }
 
         if (!id_specified && !if_specified)
         {
@@ -243,10 +240,7 @@ internal static class CommandLine
                 curdir = VSProjectDir;
             curdir = Path.GetFullPath(curdir + "/TDAExport/"); // use GetFullPath to get "normalized" directory path
             if (Directory.Exists(curdir))
-            {
-                id_specified = true;
                 Program.ib_directory = curdir;
-            }
             else
             {
                 Console.WriteLine("***Command Line Error*** No TDA file (--tdafile) or directory (--tdadir) specified, and default directory (cwd/TDAExport) doesn't exist");
@@ -262,10 +256,7 @@ internal static class CommandLine
                 curdir = VSProjectDir;
             curdir = Path.GetFullPath(curdir + "/ONEExport/"); // use GetFullPath to get "normalized" directory path
             if (Directory.Exists(curdir))
-            {
-                id_specified = true;
                 Program.one_directory = curdir;
-            }
             else
             {
                 Console.WriteLine("***Command Line Error*** No ONE file (--onefile) or directory (--onedir) specified, and default directory (cwd/ONEExport) doesn't exist");
