@@ -9,8 +9,8 @@ namespace CompareONEToIB;
 
 internal static class CommandLine
 {
-    const string VSDebugDir = @"C:\Users\lel48\VisualStudioProjects\CompareONEToIB.cs\CompareONEToTDA\bin\Debug\net6.0";
-    const string VSReleaseDir = @"C:\Users\lel48\VisualStudioProjects\CompareONEToIB.cs\CompareONEToTDA\bin\Release\net6.0";
+    const string VSDebugDir = @"C:\Users\lel48\VisualStudioProjects\CompareONEToIB.cs\CompareONEToIB\bin\Debug\net6.0";
+    const string VSReleaseDir = @"C:\Users\lel48\VisualStudioProjects\CompareONEToIB.cs\CompareONEToIB\bin\Release\net6.0";
     const string VSProjectDir = @"C:\Users\lel48\VisualStudioProjects\CompareONEToIB.cs";
 
     internal static void ProcessCommandLineArguments(string[] args)
@@ -167,33 +167,6 @@ internal static class CommandLine
                         Program.ib_directory = arg_with_backslash;
                         break;
 
-                    case "tdafile":
-                        if (!File.Exists(arg))
-                        {
-                            if (Directory.Exists(arg))
-                                Console.WriteLine("***Command Line Error*** specified TDA File: " + arg + " is a directory, not a file. Program exiting.");
-                            else
-                                Console.WriteLine("***Command Line Error*** TDA File: " + arg + " does not exist. Program exiting.");
-                            exit = true;
-                        }
-                        Program.ib_filename = arg;
-                        break;
-
-                    case "tdadir":
-                        if (!Directory.Exists(arg))
-                        {
-                            if (File.Exists(arg))
-                                Console.WriteLine("***Command Line Error*** specified TDA Directory: " + arg + " is a file, not a directory. Program exiting.");
-                            else
-                                Console.WriteLine("***Command Line Error*** TDA Directory: " + arg + " does not exist. Program exiting.");
-                            exit = true;
-                        }
-                        arg_with_backslash = arg;
-                        if (!arg.EndsWith('\\'))
-                            arg_with_backslash += '\\';
-                        Program.ib_directory = arg_with_backslash;
-                        break;
-
                     case "onefile":
                         if (!File.Exists(arg))
                         {
@@ -234,16 +207,16 @@ internal static class CommandLine
 
         if (!id_specified && !if_specified)
         {
-            // check if default TDA directory exists; default name and location is cwd/TDAExport/
+            // check if default IB directory exists; default name and location is cwd/IBExport/
             string curdir = Directory.GetCurrentDirectory();
             if (curdir == VSDebugDir || curdir == VSReleaseDir)
                 curdir = VSProjectDir;
-            curdir = Path.GetFullPath(curdir + "/TDAExport/"); // use GetFullPath to get "normalized" directory path
+            curdir = Path.GetFullPath(curdir + "/IBExport/"); // use GetFullPath to get "normalized" directory path
             if (Directory.Exists(curdir))
                 Program.ib_directory = curdir;
             else
             {
-                Console.WriteLine("***Command Line Error*** No TDA file (--tdafile) or directory (--tdadir) specified, and default directory (cwd/TDAExport) doesn't exist");
+                Console.WriteLine("***Command Line Error*** No IB file (--ibfile) or directory (--ibdir) specified, and default directory (cwd/IBExport) doesn't exist");
                 exit = true;
             }
         }
