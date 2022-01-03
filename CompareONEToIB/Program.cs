@@ -283,7 +283,7 @@ static class Program
 
         if (!file_found)
         {
-            Console.WriteLine("\n***Error*** No valid ONE files found");
+            Console.WriteLine($"\n***Error*** No ONE files found in {one_directory} with following filename pattern: yyyy-mm-dd-ONEDetailReport.csv");
             return null;
         }
 
@@ -354,7 +354,7 @@ static class Program
 
         if (!file_found)
         {
-            Console.WriteLine("\n***Error*** No IB files found with following filename pattern: [filtered_]portfolio.yyyymmdd.csv");
+            Console.WriteLine($"\n***Error*** No IB files found in {ib_directory} with following filename pattern: [filtered_]portfolio.yyyymmdd.csv");
             return null;
         }
 
