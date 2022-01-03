@@ -491,7 +491,7 @@ static class Program
             case "OPT":
                 //SPX    APR2022 4025 P [SPXW  220429P04025000 100],-4,USD,48.6488838,-19459.55,74.0574865,10163.44,0.00,No,OPT,235456.06
                 if (!description.StartsWith(master_symbol))
-                    return 0; // This IB position is not relevant to this compare. Don't add to ibPositions collection
+                    return 1; // This IB position is not relevant to this compare. Don't add to ibPositions collection
 
                 rc = ParseOptionSpec(description, @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
                 if (!rc)
@@ -506,7 +506,7 @@ static class Program
                 ibPosition.optionType = OptionType.Futures;
                 rc = ParseFuturesSpec(description, @"(\w+) +(\w+)$", out ibPosition.symbol, out ibPosition.expiration);
                 if (!relevant_symbols.ContainsKey(ibPosition.symbol))
-                    return 0;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
+                    return 1;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
                 break;
 
             case "STK":
@@ -514,7 +514,7 @@ static class Program
                 ibPosition.optionType = OptionType.Stock;
                 ibPosition.symbol = fields[0].Trim();
                 if (!relevant_symbols.ContainsKey(ibPosition.symbol))
-                    return 0;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
+                    return 1;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
                 break;
         }
 
@@ -574,6 +574,8 @@ static class Program
             return false;
 
         symbol = match0.Groups[1].Value.Trim();
+        if (!symbol.StartsWith(master_symbol))
+            return false;
         string option_code = match0.Groups[2].Value;
         int year = int.Parse(option_code[0..2]) + 2000;
         int month = int.Parse(option_code[2..4]);
