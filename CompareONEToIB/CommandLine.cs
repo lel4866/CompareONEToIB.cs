@@ -203,7 +203,7 @@ internal static class CommandLine
 
         if (!symbol_specified)
             // default is spx
-            Program.master_symbol = "spx";
+            Program.master_symbol = "SPX";
 
         if (!id_specified && !if_specified)
         {
