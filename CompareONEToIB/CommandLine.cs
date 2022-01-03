@@ -9,6 +9,10 @@ namespace CompareONEToIB;
 
 internal static class CommandLine
 {
+    const string VSDebugDir = @"C:\Users\lel48\VisualStudioProjects\CompareONEToIB.cs\CompareONEToTDA\bin\Debug\net6.0";
+    const string VSReleaseDir = @"C:\Users\lel48\VisualStudioProjects\CompareONEToIB.cs\CompareONEToTDA\bin\Release\net6.0";
+    const string VSProjectDir = @"C:\Users\lel48\VisualStudioProjects\CompareONEToIB.cs";
+
     internal static void ProcessCommandLineArguments(string[] args)
     {
         string? arg_name = null;
@@ -145,7 +149,7 @@ internal static class CommandLine
                                 Console.WriteLine("***Command Line Error*** IB File: " + arg + " does not exist. Program exiting.");
                             exit = true;
                         }
-                        Program.broker_filename = arg;
+                        Program.ib_filename = arg;
                         break;
 
                     case "ibdir":
@@ -160,7 +164,7 @@ internal static class CommandLine
                         arg_with_backslash = arg;
                         if (!arg.EndsWith('\\'))
                             arg_with_backslash += '\\';
-                        Program.broker_directory = arg_with_backslash;
+                        Program.ib_directory = arg_with_backslash;
                         break;
 
                     case "tdafile":
@@ -172,7 +176,7 @@ internal static class CommandLine
                                 Console.WriteLine("***Command Line Error*** TDA File: " + arg + " does not exist. Program exiting.");
                             exit = true;
                         }
-                        Program.broker_filename = arg;
+                        Program.ib_filename = arg;
                         break;
 
                     case "tdadir":
@@ -187,7 +191,7 @@ internal static class CommandLine
                         arg_with_backslash = arg;
                         if (!arg.EndsWith('\\'))
                             arg_with_backslash += '\\';
-                        Program.broker_directory = arg_with_backslash;
+                        Program.ib_directory = arg_with_backslash;
                         break;
 
                     case "onefile":
@@ -226,20 +230,47 @@ internal static class CommandLine
 
         if (!symbol_specified)
         {
-            Console.WriteLine("***Command Line Error*** No symbol (--symbol) specified");
-            exit = true;
+            // default is spx
+            symbol_specified = true;
+            Program.master_symbol = "spx";
         }
 
         if (!id_specified && !if_specified)
         {
-            Console.WriteLine("***Command Line Error*** No IB file or directory (--ibdir) specified");
-            exit = true;
+            // check if default TDA directory exists; default name and location is cwd/TDAExport/
+            string curdir = Directory.GetCurrentDirectory();
+            if (curdir == VSDebugDir || curdir == VSReleaseDir)
+                curdir = VSProjectDir;
+            curdir = Path.GetFullPath(curdir + "/TDAExport/"); // use GetFullPath to get "normalized" directory path
+            if (Directory.Exists(curdir))
+            {
+                id_specified = true;
+                Program.ib_directory = curdir;
+            }
+            else
+            {
+                Console.WriteLine("***Command Line Error*** No TDA file (--tdafile) or directory (--tdadir) specified, and default directory (cwd/TDAExport) doesn't exist");
+                exit = true;
+            }
         }
 
         if (!od_specified && !of_specified)
         {
-            Console.WriteLine("***Command Line Error*** No ONE file or directory (--onedir) specified");
-            exit = true;
+            // check if default ONE directory exists; default name and location is cwd/ONEExport/
+            string curdir = Directory.GetCurrentDirectory();
+            if (curdir == VSDebugDir || curdir == VSReleaseDir)
+                curdir = VSProjectDir;
+            curdir = Path.GetFullPath(curdir + "/ONEExport/"); // use GetFullPath to get "normalized" directory path
+            if (Directory.Exists(curdir))
+            {
+                id_specified = true;
+                Program.one_directory = curdir;
+            }
+            else
+            {
+                Console.WriteLine("***Command Line Error*** No ONE file (--onefile) or directory (--onedir) specified, and default directory (cwd/ONEExport) doesn't exist");
+                exit = true;
+            }
         }
 
         if (exit)

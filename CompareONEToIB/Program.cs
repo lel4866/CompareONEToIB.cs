@@ -179,8 +179,8 @@ static class Program
 {
     internal const string version = "0.0.3";
     internal const string version_date = "2021-12-27";
-    internal static string? broker_filename = null;
-    internal static string broker_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
+    internal static string? ib_filename = null;
+    internal static string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
     internal static string? one_filename = null;
     internal static string one_directory = @"C:\Users\lel48\OneDrive\Documents\ONEExport\";
     internal static string master_symbol = "SPX";
@@ -224,13 +224,13 @@ static class Program
 
         if (one_filename == null)
             one_filename = GetONEFileName();
-        if (broker_filename == null)
-            broker_filename = GetIBFileName();
-        if (one_filename == null || broker_filename == null)
+        if (ib_filename == null)
+            ib_filename = GetIBFileName();
+        if (one_filename == null || ib_filename == null)
             return -1;
 
         Console.WriteLine("\nProcessing ONE file: " + one_filename);
-         Console.WriteLine("Processing IB file: " + broker_filename);
+         Console.WriteLine("Processing IB file: " + ib_filename);
 
         bool rc = ProcessONEFile(one_filename);
         if (!rc)
@@ -238,7 +238,7 @@ static class Program
 
         // display ONE positions
         DisplayONEPositions();
-        rc = ProcessIBFile(broker_filename);
+        rc = ProcessIBFile(ib_filename);
         if (!rc)
             return -1;
 
@@ -292,7 +292,7 @@ static class Program
 
     static string? GetIBFileName()
     {
-        Debug.Assert(Directory.Exists(broker_directory));
+        Debug.Assert(Directory.Exists(ib_directory));
 
         const string filename_pattern = "*.csv"; // file names look like: portfolio.20211208.csv
         const string portfolio_prefix = "portfolio."; // file names look like: portfolio.20211208.csv
@@ -305,7 +305,7 @@ static class Program
         DateOnly latestDate = new(1000, 1, 1);
         string latest_full_filename = "";
 
-        files = Directory.GetFiles(broker_directory, filename_pattern, SearchOption.TopDirectoryOnly);
+        files = Directory.GetFiles(ib_directory, filename_pattern, SearchOption.TopDirectoryOnly);
         bool file_found = false;
         foreach (string full_filename in files)
         {
