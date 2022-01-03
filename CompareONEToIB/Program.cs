@@ -523,15 +523,15 @@ static class Program
         {
             if (ibPosition.optionType == OptionType.Put || ibPosition.optionType == OptionType.Call)
             {
-                Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate expiration/strike ({ibPosition.symbol} {ibPosition.optionType} {ibPosition.expiration},{ibPosition.strike})");
+                Console.WriteLine($"***Error*** in line #{line_index + 1} in IB file: duplicate expiration/strike ({ibPosition.symbol} {ibPosition.optionType} {ibPosition.expiration},{ibPosition.strike})");
                 return -1;
             }
             else
             {
                 if (ibPosition.optionType == OptionType.Futures)
-                    Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate futures entry ({ibPosition.symbol} {ibPosition.expiration})");
+                    Console.WriteLine($"***Error*** in line #{line_index + 1} in IB file: duplicate futures entry ({ibPosition.symbol} {ibPosition.expiration})");
                 else
-                    Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: duplicate stock entry ({ibPosition.symbol})");
+                    Console.WriteLine($"***Error*** in line #{line_index + 1} in IB file: duplicate stock entry ({ibPosition.symbol})");
                 return -1;
             }
         }
