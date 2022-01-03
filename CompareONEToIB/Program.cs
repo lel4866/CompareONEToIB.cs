@@ -448,35 +448,35 @@ static class Program
         bool rc = int.TryParse(fields[quantity_col], out ibPosition.quantity);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Position: {fields[quantity_col]}");
+            Console.WriteLine($"***Error*** in IB line #{line_index + 1}: invalid Position: {fields[quantity_col]}");
             return -1;
         }
 #if false
         rc = float.TryParse(fields[3], out ibPosition.marketPrice);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Market Price: {fields[3]}");
+            Console.WriteLine($"***Error*** in IB line #{line_index + 1}: invalid Market Price: {fields[3]}");
             return false;
         }
 
         rc = float.TryParse(fields[5], out ibPosition.averagePrice);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Average Price: {fields[5]}");
+            Console.WriteLine($"***Error*** in IB line #{line_index + 1}: invalid Average Price: {fields[5]}");
             return false;
         }
 
         rc = float.TryParse(fields[6], out ibPosition.unrealizedPnL);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Unrealized P&L: {fields[6]}");
+            Console.WriteLine($"***Error*** in IB line #{line_index + 1}: invalid Unrealized P&L: {fields[6]}");
             return false;
         }
 
         rc = float.TryParse(fields[7], out ibPosition.realizedPnL);
         if (!rc)
         {
-            Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid Realized P&L: {fields[7]}");
+            Console.WriteLine($"***Error*** in IB line #{line_index + 1}: invalid Realized P&L: {fields[7]}");
             return false;
         }
 #endif
@@ -496,7 +496,7 @@ static class Program
                 rc = ParseOptionSpec(description, @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
                 if (!rc)
                 {
-                    Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[description_col]}");
+                    Console.WriteLine($"***Error*** in IB line #{line_index + 1}: invalid option specification: {fields[description_col]}");
                     return -1;
                 }
                 break;
@@ -523,15 +523,15 @@ static class Program
         {
             if (ibPosition.optionType == OptionType.Put || ibPosition.optionType == OptionType.Call)
             {
-                Console.WriteLine($"***Error*** in line #{line_index + 1} in IB file: duplicate expiration/strike ({ibPosition.symbol} {ibPosition.optionType} {ibPosition.expiration},{ibPosition.strike})");
+                Console.WriteLine($"***Error*** in IB line #{line_index + 1}: duplicate expiration/strike ({ibPosition.symbol} {ibPosition.optionType} {ibPosition.expiration},{ibPosition.strike})");
                 return -1;
             }
             else
             {
                 if (ibPosition.optionType == OptionType.Futures)
-                    Console.WriteLine($"***Error*** in line #{line_index + 1} in IB file: duplicate futures entry ({ibPosition.symbol} {ibPosition.expiration})");
+                    Console.WriteLine($"***Error*** in IB line #{line_index + 1}: duplicate futures entry ({ibPosition.symbol} {ibPosition.expiration})");
                 else
-                    Console.WriteLine($"***Error*** in line #{line_index + 1} in IB file: duplicate stock entry ({ibPosition.symbol})");
+                    Console.WriteLine($"***Error*** in IB line #{line_index + 1}: duplicate stock entry ({ibPosition.symbol})");
                 return -1;
             }
         }
@@ -728,7 +728,7 @@ static class Program
 
                 if (fields.Count < index_of_last_required_trade_column + 1)
                 {
-                    Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_trade_column + 1} fields, not {fields.Count} fields");
+                    Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} must have at least {index_of_last_required_trade_column + 1} fields, not {fields.Count} fields");
                     return false;
                 }
 
@@ -744,13 +744,13 @@ static class Program
             // this is position line
             if (curOneTrade == null)
             {
-                Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} comes before Trade line.");
+                Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} comes before Trade line.");
                 return false;
             }
 
             if (fields.Count < index_of_last_required_position_column + 1)
             {
-                Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} must have at least {index_of_last_required_position_column + 1} fields, not {fields.Count} fields");
+                Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} must have at least {index_of_last_required_position_column + 1} fields, not {fields.Count} fields");
                 return false;
             }
 
@@ -883,21 +883,21 @@ static class Program
         oneTrade.account = fields[one_trade_columns["Account"]];
         if (one_account != oneTrade.account)
         {
-            Console.WriteLine($"\n***Error*** In ONE Trade line #{line_index + 1}, account field: {oneTrade.account} is not the same as line 9 of file: {one_account}");
+            Console.WriteLine($"\n***Error*** In ONE trade line #{line_index + 1}, account field: {oneTrade.account} is not the same as line 9 of file: {one_account}");
             return null;
         }
 
         int field_index = one_trade_columns["Expiration"];
         if (!DateOnly.TryParse(fields[field_index], out oneTrade.expiration))
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid date field: {fields[field_index]}");
+            Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} has invalid date field: {fields[field_index]}");
             return null;
         }
 
         oneTrade.trade_id = fields[one_trade_columns["TradeId"]];
         if (oneTrade.trade_id.Length == 0)
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has empty trade id field");
+            Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} has empty trade id field");
             return null;
         }
 
@@ -906,7 +906,7 @@ static class Program
         field_index = one_trade_columns["Underlying"];
         if (master_symbol != fields[field_index])
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} is for symbol other than {master_symbol}: {fields[field_index]}");
+            Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} is for symbol other than {master_symbol}: {fields[field_index]}");
             return null;
         }
 
@@ -917,14 +917,14 @@ static class Program
             oneTrade.status = TradeStatus.Closed;
         else
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid trade status field: {status}");
+            Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} has invalid trade status field: {status}");
             return null;
         }
 
         string open_dt = fields[one_trade_columns["OpenDate"]];
         if (!DateTime.TryParse(open_dt, out oneTrade.open_dt))
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid date field: {open_dt}");
+            Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} has invalid date field: {open_dt}");
             return null;
         }
 
@@ -933,7 +933,7 @@ static class Program
             string close_dt = fields[one_trade_columns["CloseDate"]];
             if (!DateTime.TryParse(close_dt, out oneTrade.close_dt))
             {
-                Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid date field: {close_dt}");
+                Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} has invalid date field: {close_dt}");
                 return null;
             }
         }
@@ -941,20 +941,20 @@ static class Program
         string dte = fields[one_trade_columns["DaysToExpiration"]];
         if (!int.TryParse(dte, out oneTrade.dte))
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid dte field: {dte}");
+            Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} has invalid dte field: {dte}");
             return null;
         }
 
         string dit = fields[one_trade_columns["DaysInTrade"]];
         if (!int.TryParse(dit, out oneTrade.dit))
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid dit field: {dit}");
+            Console.WriteLine($"\n***Error*** ONE trade line #{line_index + 1} has invalid dit field: {dit}");
             return null;
         }
 
         if (oneTrades.ContainsKey(oneTrade.trade_id))
         {
-            Console.WriteLine($"\n***Error*** in #{line_index + 1} in ONE file: duplicate trade id: {oneTrade.trade_id}");
+            Console.WriteLine($"\n***Error*** in ONE trade line #{line_index + 1} in ONE file: duplicate trade id: {oneTrade.trade_id}");
             return null;
         }
         oneTrades.Add(oneTrade.trade_id, oneTrade);
@@ -971,14 +971,14 @@ static class Program
         string account = fields[one_position_columns["Account"]];
         if (account != one_account)
         {
-            Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} has account: {account} that is different from trade account: {one_account}");
+            Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} has account: {account} that is different from trade account: {one_account}");
             return null;
         }
 
         string tid = fields[one_position_columns["TradeId"]];
         if (tid != trade_id)
         {
-            Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} has trade id: {tid} that is different from trade id in trade line: {trade_id}");
+            Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} has trade id: {tid} that is different from trade id in trade line: {trade_id}");
             return null;
         }
 
@@ -989,7 +989,7 @@ static class Program
         string open_dt = fields[one_position_columns["Date"]];
         if (!DateTime.TryParse(open_dt, out position.open_dt))
         {
-            Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} has invalid open date field: {open_dt}");
+            Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} has invalid open date field: {open_dt}");
             return null;
         }
 
@@ -1002,14 +1002,14 @@ static class Program
             case "Sell":
                 quantity_sign = -1; break;
             default:
-                Console.WriteLine($"\n***Error*** ONE Position line #{line_index + 1} has invalid transaction type (must be Buy or Sell): {transaction}");
+                Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} has invalid transaction type (must be Buy or Sell): {transaction}");
                 return null;
         }
 
         string qty = fields[one_position_columns["Qty"]];
         if (!int.TryParse(qty, out position.quantity))
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid quantity field: {qty}");
+            Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} has invalid quantity field: {qty}");
             return null;
         }
         position.quantity *= quantity_sign;
@@ -1032,7 +1032,7 @@ static class Program
                         position.expiration = expiry;
                     else
                     {
-                        Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has discrepency between date in Symbol field {position.expiration} and date in Expiry field {expiry}");
+                        Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} has discrepency between date in Symbol field {position.expiration} and date in Expiry field {expiry}");
                         return null;
                     }
                 }
@@ -1047,14 +1047,14 @@ static class Program
         }
         else
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid type field (Must be Put, Call, or Stock): {type}");
+            Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} has invalid type field (Must be Put, Call, or Stock): {type}");
             return null;
         }
 
         string open_price = fields[one_position_columns["Price"]];
         if (!float.TryParse(open_price, out position.open_price))
         {
-            Console.WriteLine($"\n***Error*** ONE Trade line #{line_index + 1} has invalid price field: {open_price}");
+            Console.WriteLine($"\n***Error*** ONE position line #{line_index + 1} has invalid price field: {open_price}");
             return null;
         }
 
