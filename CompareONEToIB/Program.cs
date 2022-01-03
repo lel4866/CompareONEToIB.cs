@@ -205,7 +205,7 @@ static class Program
     static readonly Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
 
     // key is (symbol, OptionType, Expiration, Strike); value is quantity
-    static readonly SortedDictionary<OptionKey, IBPosition> brokerPositions = new();
+    static readonly SortedDictionary<OptionKey, IBPosition> ibPositions = new();
 
     // dictionry of ONE trades with key of trade id
     static readonly SortedDictionary<string, ONETrade> ONE_trades = new();
@@ -480,6 +480,7 @@ static class Program
             return false;
         }
 #endif
+        Dictionary<string, float> relevant_symbols = associated_symbols[master_symbol];
         int description_col = broker_columns["Financial Instrument Description"];
         string description = fields[description_col];
 
@@ -488,30 +489,37 @@ static class Program
         switch (security_type)
         {
             case "OPT":
+                //SPX    APR2022 4025 P [SPXW  220429P04025000 100],-4,USD,48.6488838,-19459.55,74.0574865,10163.44,0.00,No,OPT,235456.06
+                if (!description.StartsWith(master_symbol))
+                    return 0; // This IB position is not relevant to this compare. Don't add to ibPositions collection
+
                 rc = ParseOptionSpec(description, @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
                 if (!rc)
                 {
                     Console.WriteLine($"***Error*** in #{line_index + 1} in IB file: invalid option specification: {fields[description_col]}");
                     return -1;
                 }
-
                 break;
 
             case "FUT":
                 //MES      MAR2022,1,USD,4624.50,23122.50,4625.604,-5.52,0.00,No,FUT,23136.14
                 ibPosition.optionType = OptionType.Futures;
                 rc = ParseFuturesSpec(description, @"(\w+) +(\w+)$", out ibPosition.symbol, out ibPosition.expiration);
+                if (!relevant_symbols.ContainsKey(ibPosition.symbol))
+                    return 0;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
                 break;
 
             case "STK":
                 //SPY,100,USD,463.3319397,46333.19,463.02,31.19,0.00,No,STK,46333.19
                 ibPosition.optionType = OptionType.Stock;
                 ibPosition.symbol = fields[0].Trim();
+                if (!relevant_symbols.ContainsKey(ibPosition.symbol))
+                    return 0;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
                 break;
         }
 
         var ib_key = new OptionKey(ibPosition.symbol, ibPosition.optionType, ibPosition.expiration, ibPosition.strike);
-        if (brokerPositions.ContainsKey(ib_key))
+        if (ibPositions.ContainsKey(ib_key))
         {
             if (ibPosition.optionType == OptionType.Put || ibPosition.optionType == OptionType.Call)
             {
@@ -527,7 +535,8 @@ static class Program
                 return -1;
             }
         }
-        brokerPositions.Add(ib_key, ibPosition);
+
+        ibPositions.Add(ib_key, ibPosition);
         return 0;
     }
 
@@ -1067,7 +1076,7 @@ static class Program
             if (one_key.OptionType == OptionType.Stock)
                 continue;
 
-            if (!brokerPositions.TryGetValue(one_key, out IBPosition? ib_position))
+            if (!ibPositions.TryGetValue(one_key, out IBPosition? ib_position))
             {
                 Console.WriteLine($"\n***Error*** ONE has a {one_key.OptionType} position in trade(s) {string.Join(",", one_trade_ids)}, with no matching position in IB:");
                 Console.WriteLine($"{one_key.Symbol}\t{one_key.OptionType}\tquantity: {one_quantity}\texpiration: {one_key.Expiration}\tstrike: {one_key.Strike}");
@@ -1092,7 +1101,7 @@ static class Program
         // ok...we've gone through all the ONE option positions, and tried to find associated IB positions. But...
         // there could still be IB option positions that have no corresponding ONE position
         // loop through all IB option positions, find associated ONE positions (if they don't exist, display error)
-        foreach (IBPosition position in brokerPositions.Values)
+        foreach (IBPosition position in ibPositions.Values)
         {
             // ignore stock/futures positions...they've already been checked in VerifyStockPositions()
             if (position.optionType == OptionType.Stock || position.optionType == OptionType.Futures)
@@ -1129,14 +1138,14 @@ static class Program
 
         // get IB stock/futures positions
         // note that net IB position could be 0 even if stock/futures positions exist in IB
-        List<OptionKey> ib_stock_or_futures_keys = brokerPositions.Keys.Where(s => s.OptionType == OptionType.Stock || s.OptionType == OptionType.Futures).ToList();
+        List<OptionKey> ib_stock_or_futures_keys = ibPositions.Keys.Where(s => s.OptionType == OptionType.Stock || s.OptionType == OptionType.Futures).ToList();
         float ib_stock_or_futures_quantity = 0f;
         foreach (OptionKey ib_stock_or_futures_key in ib_stock_or_futures_keys)
         {
             Dictionary<string, float> possible_ib_symbols = associated_symbols[master_symbol];
             Debug.Assert(possible_ib_symbols.ContainsKey(ib_stock_or_futures_key.Symbol));
             float multiplier = possible_ib_symbols[ib_stock_or_futures_key.Symbol];
-            float quantity = brokerPositions[ib_stock_or_futures_key].quantity;
+            float quantity = ibPositions[ib_stock_or_futures_key].quantity;
             ib_stock_or_futures_quantity += multiplier * quantity;
         }
 
@@ -1287,7 +1296,7 @@ static class Program
     static void DisplayIBPositions()
     {
         Console.WriteLine($"IB Positions related to {master_symbol}:");
-        foreach (IBPosition position in brokerPositions.Values)
+        foreach (IBPosition position in ibPositions.Values)
             DisplayIBPosition(position);
         //Console.WriteLine();
     }
