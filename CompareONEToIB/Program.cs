@@ -177,8 +177,8 @@ class IBPosition
 
 static class Program
 {
-    internal const string version = "0.0.3";
-    internal const string version_date = "2021-12-27";
+    internal const string version = "0.0.4";
+    internal const string version_date = "2022-01-05";
     internal static string? ib_filename = null;
     internal static string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
     internal static string? one_filename = null;
@@ -236,8 +236,8 @@ static class Program
         if (!rc)
             return -1;
 
-        // display ONE positions
         DisplayONEPositions();
+
         rc = ProcessIBFile(ib_filename);
         if (!rc)
             return -1;
@@ -421,13 +421,19 @@ static class Program
                 return false;
             }
 
-            int irc = ParseIBPositionLine(line_index, fields);
+            int irc = ParseIBPositionLine(line_index, fields); // adds positions to ibPositions
             if (irc != 0)
             {
                 // if irc == -1, error parsing line
                 if (irc < 0)
                     return false;
                 // irc +1, irrelevant symbol - ignore line
+            }
+
+            if (ibPositions.Count == 0)
+            {
+                Console.WriteLine($"\n***Error*** No positions related to {master_symbol} in IB file {full_filename}");
+                return false;
             }
         }
 
@@ -775,6 +781,12 @@ static class Program
                 Debug.Assert(position.quantity != 0); // todo: should be error message
                 curOneTrade.positions.Add(key, position.quantity);
             }
+        }
+
+        if (ONE_trades.Count == 0)
+        {
+            Console.WriteLine($"\n***Error*** No trades in ONE file {full_filename}");
+            return false;
         }
 
         DisplayONETrades();
