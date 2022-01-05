@@ -242,12 +242,13 @@ static class Program
         if (!rc)
             return -1;
 
-        // display IB positions
         DisplayIBPositions();
 
         rc = CompareONEPositionsToIBPositions();
         if (!rc)
             return -1;
+
+        Console.WriteLine($"\nSuccess: IB and ONE positions for {master_symbol} are the equivalent");
 
         stopWatch.Stop();
         Console.WriteLine($"\nElapsed time = {stopWatch.Elapsed}");
