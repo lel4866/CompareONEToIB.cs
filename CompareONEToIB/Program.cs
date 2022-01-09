@@ -165,10 +165,6 @@ class IBPosition
     public int strike = 0;
     public DateOnly expiration = new();
     public int quantity;
-    //public float averagePrice; // average entry price
-    //public float marketPrice; // current market price
-    //public float unrealizedPnL;
-    //public float realizedPnL;
 
     // used only during reconciliation with ONE positions
     public int one_quantity = 0;
@@ -199,7 +195,7 @@ static class Program
     };
 
     // note: the ref is readonly, not the contents of the Dictionary
-    static readonly Dictionary<string, int> broker_columns = new(); // key is column name, value is column index
+    static readonly Dictionary<string, int> ib_columns = new(); // key is column name, value is column index
     static readonly Dictionary<string, int> one_trade_columns = new(); // key is column name, value is column index
     static readonly Dictionary<string, int> one_position_columns = new(); // key is column name, value is column index
     static readonly Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
@@ -230,7 +226,7 @@ static class Program
             return -1;
 
         Console.WriteLine("\nProcessing ONE file: " + one_filename);
-         Console.WriteLine("Processing IB file: " + ib_filename);
+        Console.WriteLine("Processing IB file: " + ib_filename);
 
         bool rc = ProcessONEFile(one_filename);
         if (!rc)
@@ -389,12 +385,12 @@ static class Program
         {
             string column_name = column_names[i].Trim();
             if (column_name.Length > 0)
-                broker_columns.Add(column_name, i);
+                ib_columns.Add(column_name, i);
         }
         int index_of_last_required_column = 0;
         for (int i = 0; i < required_columns.Length; i++)
         {
-            if (!broker_columns.TryGetValue(required_columns[i], out int colnum))
+            if (!ib_columns.TryGetValue(required_columns[i], out int colnum))
             {
                 Console.WriteLine($"\n***Error*** IB file header must contain column named {required_columns[i]}");
                 return false;
@@ -451,47 +447,19 @@ static class Program
     {
         IBPosition ibPosition = new();
 
-        int quantity_col = broker_columns["Position"];
+        int quantity_col = ib_columns["Position"];
         bool rc = int.TryParse(fields[quantity_col], out ibPosition.quantity);
         if (!rc)
         {
             Console.WriteLine($"***Error*** in IB line {line_index + 1}: invalid Position: {fields[quantity_col]}");
             return -1;
         }
-#if false
-        rc = float.TryParse(fields[3], out ibPosition.marketPrice);
-        if (!rc)
-        {
-            Console.WriteLine($"***Error*** in IB line {line_index + 1}: invalid Market Price: {fields[3]}");
-            return false;
-        }
 
-        rc = float.TryParse(fields[5], out ibPosition.averagePrice);
-        if (!rc)
-        {
-            Console.WriteLine($"***Error*** in IB line {line_index + 1}: invalid Average Price: {fields[5]}");
-            return false;
-        }
-
-        rc = float.TryParse(fields[6], out ibPosition.unrealizedPnL);
-        if (!rc)
-        {
-            Console.WriteLine($"***Error*** in IB line {line_index + 1}: invalid Unrealized P&L: {fields[6]}");
-            return false;
-        }
-
-        rc = float.TryParse(fields[7], out ibPosition.realizedPnL);
-        if (!rc)
-        {
-            Console.WriteLine($"***Error*** in IB line {line_index + 1}: invalid Realized P&L: {fields[7]}");
-            return false;
-        }
-#endif
         Dictionary<string, float> relevant_symbols = associated_symbols[master_symbol];
-        int description_col = broker_columns["Financial Instrument Description"];
+        int description_col = ib_columns["Financial Instrument Description"];
         string description = fields[description_col];
 
-        int security_type_col = broker_columns["Security Type"];
+        int security_type_col = ib_columns["Security Type"];
         string security_type = fields[security_type_col].Trim();
         switch (security_type)
         {
