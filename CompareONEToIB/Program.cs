@@ -421,17 +421,16 @@ static class Program
             int irc = ParseIBPositionLine(line_index, fields); // adds positions to ibPositions
             if (irc != 0)
             {
-                // if irc == -1, error parsing line
+                // if irc == -1, error parsing line, irc == +1, irrelevant symbol - ignore line
                 if (irc < 0)
                     return false;
-                // irc +1, irrelevant symbol - ignore line
             }
+        }
 
-            if (ibPositions.Count == 0)
-            {
-                Console.WriteLine($"\n***Error*** No positions related to {master_symbol} in IB file {full_filename}");
-                return false;
-            }
+        if (ibPositions.Count == 0)
+        {
+            Console.WriteLine($"\n***Error*** No positions related to {master_symbol} in IB file {full_filename}");
+            return false;
         }
 
         return true;
