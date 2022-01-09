@@ -2,7 +2,7 @@
   "profiles": {
     "CompareONEToIB": {
       "commandName": "Project",
-      "commandLineArgs": "-id C:\\Users\\lel48\\VisualStudioProjects\\CompareONEToIB\\IBExport -od C:\\Users\\lel48\\VisualStudioProjects\\CompareONEToIB\\ONEExport "
+      "commandLineArgs": "-id C:\\Users\\lel48\\VisualStudioProjects\\CompareONEToIB.cs\\IBExport -od C:\\Users\\lel48\\VisualStudioProjects\\CompareONEToIB.cs\\ONEExport "
     }
   }
 }

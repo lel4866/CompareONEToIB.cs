@@ -9,7 +9,7 @@ using CompareONEToIB;
 namespace CompareOneToIB;
 
 // todo: rename OptionType to SecurityType
-public enum OptionType
+public enum SecurityType
 {
     Put,
     Call,
@@ -50,7 +50,7 @@ class ONEPosition
 {
     public string account = "";
     public string trade_id = "";
-    public OptionType optionType;
+    public SecurityType securityType;
     public DateTime open_dt;
     public string symbol = ""; // SPX, SPXW, etc
     public int strike;
@@ -64,11 +64,11 @@ class ONEPosition
 public class OptionKey : IComparable<OptionKey>
 {
     public string Symbol { get; set; }
-    public OptionType OptionType { get; set; }
+    public SecurityType OptionType { get; set; }
     public DateOnly Expiration { get; set; }
     public int Strike { get; set; }
 
-    public OptionKey(string symbol, OptionType optionType, DateOnly expiration, int strike)
+    public OptionKey(string symbol, SecurityType optionType, DateOnly expiration, int strike)
     {
         this.Symbol = symbol;
         this.OptionType = optionType;
@@ -96,8 +96,8 @@ public class OptionKey : IComparable<OptionKey>
         if (other == null)
             return 1;
 
-        bool thisIsOption = OptionType == OptionType.Put || OptionType == OptionType.Call;
-        bool otherIsOption = other.OptionType == OptionType.Put || other.OptionType == OptionType.Call;
+        bool thisIsOption = OptionType == SecurityType.Put || OptionType == SecurityType.Call;
+        bool otherIsOption = other.OptionType == SecurityType.Put || other.OptionType == SecurityType.Call;
         if (!thisIsOption)
         {
             // this is stock/future
@@ -107,9 +107,9 @@ public class OptionKey : IComparable<OptionKey>
 
             // this and other are both Stocks/Futures: stocks come before futures, then symbol, then, if future, expiration
 
-            if (OptionType == OptionType.Stock)
+            if (OptionType == SecurityType.Stock)
             {
-                if (other.OptionType == OptionType.Futures)
+                if (other.OptionType == SecurityType.Futures)
                     return -1; // stocks come before futures
 
                 // this and other are both stocks...sort by symbol
@@ -118,7 +118,7 @@ public class OptionKey : IComparable<OptionKey>
 
             // this is futures
 
-            if (other.OptionType == OptionType.Stock)
+            if (other.OptionType == SecurityType.Stock)
                 return 1; // this is futures, other is stock: futures come after stocks
 
             // this and other are both futures..sort by symbol then expiration
@@ -160,7 +160,7 @@ public class OptionKey : IComparable<OptionKey>
 //SPX APR2022 4300 P [SPXW  220429P04300000 100],2,USD,119.5072021,23901.44,123.5542635,-809.41,0.00,No,OPT,-246454.66
 class IBPosition
 {
-    public OptionType optionType; // just Put, Call, or Stock...futures are converted to equivalent SPX stock...so is SPY
+    public SecurityType securityType; // just Put, Call, or Stock...futures are converted to equivalent SPX stock...so is SPY
     public string symbol = ""; // SPX, SPXW, etc
     public int strike = 0;
     public DateOnly expiration = new();
@@ -467,7 +467,7 @@ static class Program
                 if (!description.StartsWith(master_symbol))
                     return 1; // This IB position is not relevant to this compare. Don't add to ibPositions collection
 
-                rc = ParseOptionSpec(description, @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.optionType, out ibPosition.expiration, out ibPosition.strike);
+                rc = ParseOptionSpec(description, @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.securityType, out ibPosition.expiration, out ibPosition.strike);
                 if (!rc)
                 {
                     Console.WriteLine($"***Error*** in IB line {line_index + 1}: invalid option specification: {fields[description_col]}");
@@ -477,7 +477,7 @@ static class Program
 
             case "FUT":
                 //MES      MAR2022,1,USD,4624.50,23122.50,4625.604,-5.52,0.00,No,FUT,23136.14
-                ibPosition.optionType = OptionType.Futures;
+                ibPosition.securityType = SecurityType.Futures;
                 rc = ParseFuturesSpec(description, @"(\w+) +(\w+)$", out ibPosition.symbol, out ibPosition.expiration);
                 if (!relevant_symbols.ContainsKey(ibPosition.symbol))
                     return 1;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
@@ -485,24 +485,24 @@ static class Program
 
             case "STK":
                 //SPY,100,USD,463.3319397,46333.19,463.02,31.19,0.00,No,STK,46333.19
-                ibPosition.optionType = OptionType.Stock;
+                ibPosition.securityType = SecurityType.Stock;
                 ibPosition.symbol = fields[0].Trim();
                 if (!relevant_symbols.ContainsKey(ibPosition.symbol))
                     return 1;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
                 break;
         }
 
-        var ib_key = new OptionKey(ibPosition.symbol, ibPosition.optionType, ibPosition.expiration, ibPosition.strike);
+        var ib_key = new OptionKey(ibPosition.symbol, ibPosition.securityType, ibPosition.expiration, ibPosition.strike);
         if (ibPositions.ContainsKey(ib_key))
         {
-            if (ibPosition.optionType == OptionType.Put || ibPosition.optionType == OptionType.Call)
+            if (ibPosition.securityType == SecurityType.Put || ibPosition.securityType == SecurityType.Call)
             {
-                Console.WriteLine($"***Error*** in IB line {line_index + 1}: duplicate expiration/strike ({ibPosition.symbol} {ibPosition.optionType} {ibPosition.expiration},{ibPosition.strike})");
+                Console.WriteLine($"***Error*** in IB line {line_index + 1}: duplicate expiration/strike ({ibPosition.symbol} {ibPosition.securityType} {ibPosition.expiration},{ibPosition.strike})");
                 return -1;
             }
             else
             {
-                if (ibPosition.optionType == OptionType.Futures)
+                if (ibPosition.securityType == SecurityType.Futures)
                     Console.WriteLine($"***Error*** in IB line {line_index + 1}: duplicate futures entry ({ibPosition.symbol} {ibPosition.expiration})");
                 else
                     Console.WriteLine($"***Error*** in IB line {line_index + 1}: duplicate stock entry ({ibPosition.symbol})");
@@ -533,10 +533,10 @@ static class Program
     }
 
     // SPX APR2022 4300 P[SPXW  220429P04300000 100]
-    static bool ParseOptionSpec(string field, string regex, out string symbol, out OptionType type, out DateOnly expiration, out int strike)
+    static bool ParseOptionSpec(string field, string regex, out string symbol, out SecurityType type, out DateOnly expiration, out int strike)
     {
         symbol = "";
-        type = OptionType.Put;
+        type = SecurityType.Put;
         expiration = new();
         strike = 0;
 
@@ -555,7 +555,7 @@ static class Program
         int month = int.Parse(option_code[2..4]);
         int day = int.Parse(option_code[4..6]);
         expiration = new(year, month, day);
-        type = (option_code[6] == 'P') ? OptionType.Put : OptionType.Call;
+        type = (option_code[6] == 'P') ? SecurityType.Put : SecurityType.Call;
         strike = int.Parse(option_code[7..12]);
         return true;
     }
@@ -733,7 +733,7 @@ static class Program
                 return false;
 
             // now add position to trade's positions dictionary; remove existing position if quantity now 0
-            var key = new OptionKey(position.symbol, position.optionType, position.expiration, position.strike);
+            var key = new OptionKey(position.symbol, position.securityType, position.expiration, position.strike);
 
             // within trade, we consolidate individual trades to obtain an overall current position
             if (curOneTrade.positions.ContainsKey(key))
@@ -825,11 +825,11 @@ static class Program
             {
                 switch (key.OptionType)
                 {
-                    case OptionType.Stock:
+                    case SecurityType.Stock:
                         Console.WriteLine($"{master_symbol}\tIndex\tquantity: {quantity}");
                         break;
-                    case OptionType.Put:
-                    case OptionType.Call:
+                    case SecurityType.Put:
+                    case SecurityType.Call:
                         Console.WriteLine($"{key.Symbol}\t{key.OptionType}\tquantity: {quantity}\texpiration: {key.Expiration}\tstrike: {key.Strike}");
                         break;
                     default:
@@ -998,7 +998,7 @@ static class Program
         string symbol = fields[one_position_columns["Symbol"]];
         if (type == "Put" || type == "Call")
         {
-            bool rc = ParseOptionSpec(symbol, @"(\w+) +(.+)$", out position.symbol, out position.optionType, out position.expiration, out position.strike);
+            bool rc = ParseOptionSpec(symbol, @"(\w+) +(.+)$", out position.symbol, out position.securityType, out position.expiration, out position.strike);
             if (!rc)
                 return null;
 
@@ -1021,7 +1021,7 @@ static class Program
         else if (type == "Stock")
         {
             position.symbol = symbol;
-            position.optionType = OptionType.Stock;
+            position.securityType = SecurityType.Stock;
             position.expiration = new DateOnly(1, 1, 1);
             position.strike = 0;
         }
@@ -1052,10 +1052,10 @@ static class Program
             if (one_quantity == 0)
                 continue;
 
-            Debug.Assert(one_key.OptionType != OptionType.Futures);
+            Debug.Assert(one_key.OptionType != SecurityType.Futures);
 
             // if ONE position is Stock ignore it...already checked in call to VerifyStockPositions();
-            if (one_key.OptionType == OptionType.Stock)
+            if (one_key.OptionType == SecurityType.Stock)
                 continue;
 
             if (!ibPositions.TryGetValue(one_key, out IBPosition? ib_position))
@@ -1086,14 +1086,14 @@ static class Program
         foreach (IBPosition position in ibPositions.Values)
         {
             // ignore stock/futures positions...they've already been checked in VerifyStockPositions()
-            if (position.optionType == OptionType.Stock || position.optionType == OptionType.Futures)
+            if (position.securityType == SecurityType.Stock || position.securityType == SecurityType.Futures)
                 continue;
 
             if (position.one_quantity != position.quantity)
             {
                 if (position.one_quantity == 0)
                 {
-                    Console.WriteLine($"\n***Error*** IB has a {position.optionType} position with no matching position in ONE");
+                    Console.WriteLine($"\n***Error*** IB has a {position.securityType} position with no matching position in ONE");
                     DisplayIBPosition(position);
                     rc = false;
                 }
@@ -1108,7 +1108,7 @@ static class Program
     {
         // get ONE consolidated index position
         // note that net ONE index position could be 0 even if individual ONE trades have index positions
-        List<OptionKey> one_stock_keys = consolidatedOnePositions.Keys.Where(s => s.OptionType == OptionType.Stock).ToList();
+        List<OptionKey> one_stock_keys = consolidatedOnePositions.Keys.Where(s => s.OptionType == SecurityType.Stock).ToList();
         Debug.Assert(one_stock_keys.Count <= 1, "***Program Error*** VerifyStockPositions: more than 1 Index position in consolidatedOnePositions");
         (int one_quantity, HashSet<string> one_trade_ids) = (0, new());
         if (one_stock_keys.Count == 1)
@@ -1120,7 +1120,7 @@ static class Program
 
         // get IB stock/futures positions
         // note that net IB position could be 0 even if stock/futures positions exist in IB
-        List<OptionKey> ib_stock_or_futures_keys = ibPositions.Keys.Where(s => s.OptionType == OptionType.Stock || s.OptionType == OptionType.Futures).ToList();
+        List<OptionKey> ib_stock_or_futures_keys = ibPositions.Keys.Where(s => s.OptionType == SecurityType.Stock || s.OptionType == SecurityType.Futures).ToList();
         float ib_stock_or_futures_quantity = 0f;
         foreach (OptionKey ib_stock_or_futures_key in ib_stock_or_futures_keys)
         {
@@ -1262,11 +1262,11 @@ static class Program
         {
             switch (one_key.OptionType)
             {
-                case OptionType.Stock:
+                case SecurityType.Stock:
                     Console.WriteLine($"{one_key.Symbol}\tIndex\tquantity: {quantity}\ttrade(s): {string.Join(",", trades)}");
                     break;
-                case OptionType.Call:
-                case OptionType.Put:
+                case SecurityType.Call:
+                case SecurityType.Put:
                     // create trades list
                     Console.WriteLine($"{one_key.Symbol}\t{one_key.OptionType}\tquantity: {quantity}\texpiration: {one_key.Expiration}\tstrike: {one_key.Strike}\ttrade(s): {string.Join(",", trades)}");
                     break;
@@ -1288,20 +1288,20 @@ static class Program
         if (position.quantity == 0)
             return;
 
-        switch (position.optionType)
+        switch (position.securityType)
         {
-            case OptionType.Stock:
+            case SecurityType.Stock:
                 //Console.WriteLine($"{position.symbol} {position.optionType}: quantity = {position.quantity}");
-                Console.WriteLine($"{position.symbol}\t{position.optionType}\tquantity: {position.quantity}");
+                Console.WriteLine($"{position.symbol}\t{position.securityType}\tquantity: {position.quantity}");
                 break;
-            case OptionType.Futures:
+            case SecurityType.Futures:
                 //Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, quantity = {position.quantity}");
-                Console.WriteLine($"{position.symbol}\t{position.optionType}\tquantity: {position.quantity}\texpiration: {position.expiration}");
+                Console.WriteLine($"{position.symbol}\t{position.securityType}\tquantity: {position.quantity}\texpiration: {position.expiration}");
                 break;
-            case OptionType.Call:
-            case OptionType.Put:
+            case SecurityType.Call:
+            case SecurityType.Put:
                 //Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, strike = {position.strike}, quantity = {position.quantity}");
-                Console.WriteLine($"{position.symbol}\t{position.optionType}\tquantity: {position.quantity}\texpiration: {position.expiration}\tstrike: {position.strike}");
+                Console.WriteLine($"{position.symbol}\t{position.securityType}\tquantity: {position.quantity}\texpiration: {position.expiration}\tstrike: {position.strike}");
                 break;
         }
     }
