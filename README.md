@@ -10,7 +10,7 @@ analysis can only been done on one class of positions at a time as specified by 
 Since you may have positions at IB that are irrelevant to your options trades, this program attempts to disregard such positions. So, for instance,
 if you are analyzing SPX positions (the default unless you specify --symbol in the command line), positions in other options, as well as
 positions in other stocks or futures **except SPY, /ES, or /MES** will be ignored. In this case, it is assumed that
-positions in SPY, /ES, or /MES are used to hedge SPX option positions. If you in are using positions in those instruments for purposes other
+positions in SPY, /ES, or /MES are used to hedge SPX option positions. If you are using positions in those instruments for purposes other
 than hedging SPX positions, this program could generate incorrect error messages (or not generate error messages when there were errors). One workaround
 is to edit the exported IB file to remove positions that you do not want analyzed. This program will display positions that it ignores in a section under
 the displayed IB positions it is analyzing. The same logic is applied when analyzing RUT or NDX option positions. 
