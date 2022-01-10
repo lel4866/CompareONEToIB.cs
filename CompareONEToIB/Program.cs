@@ -193,6 +193,7 @@ static class Program
         { "RUT", new Dictionary<string, float> { { "IWM", 0.1f }, { "M2K", 5f }, { "RTY", 50f } } },
         { "NDX", new Dictionary<string, float> { { "QQQ", 0.1f }, { "MNQ", 5f }, { "NQ", 50f } } }
     };
+    internal static Dictionary<string, float> relevant_symbols; // set to: associated_symbols[master_symbol];
 
     // note: the ref is readonly, not the contents of the Dictionary
     static readonly Dictionary<string, int> ib_columns = new(); // key is column name, value is column index
@@ -460,7 +461,6 @@ static class Program
             return -1;
         }
 
-        Dictionary<string, float> relevant_symbols = associated_symbols[master_symbol];
         int description_col = ib_columns["Financial Instrument Description"];
         string description = fields[description_col];
 
