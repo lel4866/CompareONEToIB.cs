@@ -3,9 +3,17 @@
 This program compares exported data from OptioneNet Explorer (ONE) to that from Interactive Brokers(IB) to make
 sure that the option positions actually held in IB are the ones that are beng modeled by ONE.
 
-The program currently supports portfolios that contain index options for SPX, RUT, and NDX, stock positions in SPY, IWM, and QQQ, and
-futures positoons in ES, MES, RTY, M2K, NQ, and MNQ. However analysis can only been done on one class of positions at a time as specified
-by the command line --symbol parameter.
+The program currently supports portfolios that contain index options for SPX, RUT, and NDX, stock positions in SPY, IWM, and QQQ used
+for hedging those option positions, and futures positions in ES, MES, RTY, M2K, NQ, and MNQ used to hedge those option positions. However
+analysis can only been done on one class of positions at a time as specified by the command line --symbol parameter.
+
+Since you may have positions at IB that are irrelevant to your options trades, this program attempts to disregard such positions. So, for instance,
+if you are analyzing SPX positions (the default unless you specify --symbol in the command line), positions in other options, as well as
+positions in other stocks or futures **except SPY, /ES, or /MES** will be ignored. In this case, it is assumed that
+positions in SPY, /ES, or /MES are used to hedge SPX option positions. If you are using positions in those instruments for purposes other
+than hedging SPX positions, this program could generate incorrect error messages (or not generate error messages when there were errors). One workaround
+is to edit the exported IB file to remove positions that you do not want analyzed. This program will display positions that it ignores in a section under
+the displayed IB positions it is analyzing. The same logic is applied when analyzing RUT or NDX option positions. 
 
 **This program has not been thoroughly tested and likely has bugs. In addition, the file formats used by IB and ONE
 can change without notice, which could cause the program to crash or produce erroneous results. Use at your own risk!**

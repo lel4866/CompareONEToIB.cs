@@ -193,6 +193,7 @@ static class Program
         { "RUT", new Dictionary<string, float> { { "IWM", 0.1f }, { "M2K", 5f }, { "RTY", 50f } } },
         { "NDX", new Dictionary<string, float> { { "QQQ", 0.1f }, { "MNQ", 5f }, { "NQ", 50f } } }
     };
+    internal static Dictionary<string, float> relevant_symbols; // set to: associated_symbols[master_symbol];
 
     // note: the ref is readonly, not the contents of the Dictionary
     static readonly Dictionary<string, int> ib_columns = new(); // key is column name, value is column index
@@ -202,6 +203,9 @@ static class Program
 
     // key is (symbol, OptionType, Expiration, Strike); value is quantity
     static readonly SortedDictionary<OptionKey, IBPosition> ibPositions = new();
+
+    // these positions are not relevant to specified master_symbol, but we want to display them so user can verify
+    static readonly SortedDictionary<OptionKey, IBPosition> irrelevantIBPositions = new();
 
     // dictionry of ONE trades with key of trade id
     static readonly SortedDictionary<string, ONETrade> ONE_trades = new();
@@ -239,6 +243,9 @@ static class Program
             return -1;
 
         DisplayIBPositions();
+
+        if (irrelevantIBPositions.Count > 0)
+            DisplayIrrelevantIBPositions();
 
         rc = CompareONEPositionsToIBPositions();
         if (!rc)
@@ -454,25 +461,24 @@ static class Program
             return -1;
         }
 
-        Dictionary<string, float> relevant_symbols = associated_symbols[master_symbol];
         int description_col = ib_columns["Financial Instrument Description"];
         string description = fields[description_col];
 
         int security_type_col = ib_columns["Security Type"];
         string security_type = fields[security_type_col].Trim();
+        bool irrelevant_position = false;
         switch (security_type)
         {
             case "OPT":
                 //SPX    APR2022 4025 P [SPXW  220429P04025000 100],-4,USD,48.6488838,-19459.55,74.0574865,10163.44,0.00,No,OPT,235456.06
-                if (!description.StartsWith(master_symbol))
-                    return 1; // This IB position is not relevant to this compare. Don't add to ibPositions collection
-
                 rc = ParseOptionSpec(description, @".*\[(\w+) +(.+) \w+\]$", out ibPosition.symbol, out ibPosition.securityType, out ibPosition.expiration, out ibPosition.strike);
                 if (!rc)
                 {
                     Console.WriteLine($"***Error*** in IB line {line_index + 1}: invalid option specification: {fields[description_col]}");
                     return -1;
                 }
+                if (!description.StartsWith(master_symbol))
+                    irrelevant_position = true; // This IB position is not relevant to this compare. Add to irrelevantIBPositions collection
                 break;
 
             case "FUT":
@@ -480,7 +486,7 @@ static class Program
                 ibPosition.securityType = SecurityType.Futures;
                 rc = ParseFuturesSpec(description, @"(\w+) +(\w+)$", out ibPosition.symbol, out ibPosition.expiration);
                 if (!relevant_symbols.ContainsKey(ibPosition.symbol))
-                    return 1;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
+                    irrelevant_position = true; // This IB position is not relevant to this compare. Add to irrelevantIBPositions collection
                 break;
 
             case "STK":
@@ -488,11 +494,17 @@ static class Program
                 ibPosition.securityType = SecurityType.Stock;
                 ibPosition.symbol = fields[0].Trim();
                 if (!relevant_symbols.ContainsKey(ibPosition.symbol))
-                    return 1;  // This IB position is not relevant to this compare. Don't add to ibPositions collection
+                    irrelevant_position = true; // This IB position is not relevant to this compare. Add to irrelevantIBPositions collection
                 break;
         }
-
         var ib_key = new OptionKey(ibPosition.symbol, ibPosition.securityType, ibPosition.expiration, ibPosition.strike);
+
+        if (irrelevant_position && !irrelevantIBPositions.ContainsKey(ib_key))
+        {
+            irrelevantIBPositions.Add(ib_key, ibPosition);
+            return 1;
+        }
+
         if (ibPositions.ContainsKey(ib_key))
         {
             if (ibPosition.securityType == SecurityType.Put || ibPosition.securityType == SecurityType.Call)
@@ -1138,7 +1150,7 @@ static class Program
         // note that either position could be 0
         if (ib_stock_or_futures_quantity == 0)
         {
-            Debug.Assert(one_quantity > 0);
+            Debug.Assert(one_quantity != 0);
             Debug.Assert(one_trade_ids.Count > 0);
             Console.WriteLine($"\n***Error*** ONE has an index position in {master_symbol} of {one_quantity} shares, in trade(s) {string.Join(",", one_trade_ids)}, while IB has no matching positions");
             return false;
@@ -1280,7 +1292,12 @@ static class Program
         Console.WriteLine($"IB Positions related to {master_symbol}:");
         foreach (IBPosition position in ibPositions.Values)
             DisplayIBPosition(position);
-        //Console.WriteLine();
+    }
+    static void DisplayIrrelevantIBPositions()
+    {
+        Console.WriteLine($"\nIB Positions **NOT** related to {master_symbol}:");
+        foreach (IBPosition position in irrelevantIBPositions.Values)
+            DisplayIBPosition(position);
     }
 
     static void DisplayIBPosition(IBPosition position)
