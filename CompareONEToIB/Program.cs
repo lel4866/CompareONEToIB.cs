@@ -554,7 +554,7 @@ static class Program
         strike = 0;
 
         MatchCollection mc = Regex.Matches(field, regex);
-        if (mc.Count > 1)
+        if (mc.Count < 1)
             return false;
         Match match0 = mc[0];
         if (match0.Groups.Count != 3)
