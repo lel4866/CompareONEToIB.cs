@@ -499,9 +499,10 @@ static class Program
         }
         var ib_key = new OptionKey(ibPosition.symbol, ibPosition.securityType, ibPosition.expiration, ibPosition.strike);
 
-        if (irrelevant_position && !irrelevantIBPositions.ContainsKey(ib_key))
+        if (irrelevant_position)
         {
-            irrelevantIBPositions.Add(ib_key, ibPosition);
+            if (!irrelevantIBPositions.ContainsKey(ib_key))
+                irrelevantIBPositions.Add(ib_key, ibPosition);
             return 1;
         }
 
