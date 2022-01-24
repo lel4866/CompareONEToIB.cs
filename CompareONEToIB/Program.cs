@@ -543,7 +543,7 @@ static class Program
                 break;
         }
 
-        if (irrelevant_position && !irrelevantIBPositions.ContainsKey(ib_key))
+        if (irrelevant_position && !irrelevantIBPositions.Contains(ibPosition))
         {
             irrelevantIBPositions.Add(ibPosition);
             return 1;
