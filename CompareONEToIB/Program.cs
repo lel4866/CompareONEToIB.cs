@@ -495,7 +495,6 @@ static class Program
     // returns 0 if line was parsed successfully, -1 if there was an error, 1 if line parsed ok, but is for symbol not relevant to this analysis
     static int ParseIBPositionLine(int line_index, List<string> fields)
     {
-        Position ibPosition = new(isONEPosition: false);
 
         bool rc = int.TryParse(fields[ib_quantity_col], out int quantity);
         if (!rc)
@@ -503,6 +502,10 @@ static class Program
             Console.WriteLine($"***Error*** in IB line {line_index + 1}: invalid Quantity: {fields[ib_quantity_col]}");
             return -1;
         }
+        if (quantity == 0)
+            return 1;
+        
+        var ibPosition = new Position(isONEPosition: false);
         ibPosition.Quantity = quantity;
 
         string description = fields[ib_description_col];
@@ -566,6 +569,7 @@ static class Program
             }
         }
 
+        Debug.Assert(ibPosition.Symbol != "");
         ibPositions.Add(ibPosition);
         return 0;
     }
