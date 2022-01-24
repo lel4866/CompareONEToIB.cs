@@ -735,6 +735,7 @@ static class Program
 
         // parse Trade and Position lines
         ONETrade? curOneTrade = null;
+        bool skip_current_trade = false;
         for (int line_index = 9; line_index < lines.Length; line_index++)
         {
             string line = lines[line_index].Trim();
@@ -743,8 +744,13 @@ static class Program
             if (line.Length == 0)
             {
                 curOneTrade = null;
+                skip_current_trade = false;
                 continue;
             }
+
+            if (skip_current_trade)
+                continue;
+
             bool rc = ParseCSVLine(line, out List<string> fields);
             if (!rc)
                 return false;
@@ -763,6 +769,13 @@ static class Program
                 {
                     Console.WriteLine($"\n***Error*** ONE trade line {line_index + 1} must have at least {index_of_last_required_trade_column + 1} fields, not {fields.Count} fields");
                     return false;
+                }
+
+                // if this set of positions is not for symbol (master_symbol) we are analyzing...ignore trade (all lines until we encounter blank line) 
+                if (master_symbol != fields[one_trade_columns["Underlying"]])
+                {
+                    skip_current_trade = true;
+                    continue;
                 }
 
                 // start new trade - save it in trades Dictionary
@@ -914,6 +927,8 @@ static class Program
     // we don't parse Margin,Comms,PnL,PnLperc
     static ONETrade? ParseONETradeLine(int line_index, List<string> fields)
     {
+        Debug.Assert(master_symbol == fields[one_trade_columns["Underlying"]]);
+
         ONETrade oneTrade = new();
 
         oneTrade.Account = fields[one_trade_columns["Account"]];
@@ -938,13 +953,6 @@ static class Program
         }
 
         oneTrade.TradeName = fields[one_trade_columns["TradeName"]];
-
-        field_index = one_trade_columns["Underlying"];
-        if (master_symbol != fields[field_index])
-        {
-            Console.WriteLine($"\n***Error*** ONE trade line {line_index + 1} is for symbol other than {master_symbol}: {fields[field_index]}");
-            return null;
-        }
 
         string status = fields[one_trade_columns["Status"]];
         if (status == "Open")
