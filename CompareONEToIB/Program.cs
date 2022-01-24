@@ -180,6 +180,7 @@ static class Program
     static readonly Dictionary<string, int> one_trade_columns = new(); // key is column name, value is column index
     static readonly Dictionary<string, int> one_position_columns = new(); // key is column name, value is column index
     static readonly Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
+    static readonly HashSet<Position> alreadyExpiredONEPositions = new();
 
     // key is (symbol, OptionType, Expiration, Strike);
     static readonly HashSet<Position> ibPositions = new();
@@ -227,6 +228,8 @@ static class Program
 
         if (irrelevantIBPositions.Count > 0)
             DisplayIrrelevantIBPositions();
+
+        DisplayedIgnoredONEPositions(); // ignored because they expired prior to date in one filename
 
         rc = CompareONEPositionsToIBPositions();
         if (!rc)
@@ -803,7 +806,8 @@ static class Program
             Position? position = ParseONEPositionLine(line_index, fields, curOneTrade.TradeId);
             if (position == null)
                 return false;
-            Debug.Assert(position.Quantity != 0); // todo: should be error message
+            Debug.Assert(position.Type != SecurityType.Futures);
+            Debug.Assert(position.Quantity != 0);
 
             // within trade, we consolidate individual trades to obtain an overall current position
             bool exists = curOneTrade.Positions.TryGetValue(position, out Position? existing_position);
@@ -860,9 +864,20 @@ static class Program
                 }
             }
         }
+
+        // now go through consolidated positions and remove any positions that expired prior to date in ONE filename
+        // ignore any ONE option positions that expire prior to date in ONE filename
+        foreach (Position onePosition in consolidatedONEPositions)
+        {
+            if (onePosition.Type != SecurityType.Stock && onePosition.Expiration < one_filedate)
+                alreadyExpiredONEPositions.Add(onePosition);
+        }
+        foreach (Position onePosition in alreadyExpiredONEPositions)
+            consolidatedONEPositions.Remove(onePosition);
+
     }
 
-    // note: this also removes trades from ONE_trades which are closed
+
     static void DisplayONETrades()
     {
         Console.WriteLine("\nONE Trades:");
@@ -891,21 +906,18 @@ static class Program
             }
 
             foreach (Position position in one_trade.Positions)
-            {
-                switch (position.Type)
-                {
-                    case SecurityType.Stock:
-                        Console.WriteLine($"{master_symbol}\tIndex\tquantity: {position.Quantity}");
-                        break;
-                    case SecurityType.Put:
-                    case SecurityType.Call:
-                        Console.WriteLine($"{position.Symbol}\t{position.Type}\tquantity: {position.Quantity}\texpiration: {position.Expiration}\tstrike: {position.Strike}");
-                        break;
-                    default:
-                        Debug.Assert(false, $"Invalid key.OptionType in ONE_trades: {position.Type}");
-                        break;
-                }
-            }
+                DisplayONEPosition(position);
+        }
+    }
+    
+    // ignored because they expired prior to date in one filename
+    static void DisplayedIgnoredONEPositions()
+    {
+        if (alreadyExpiredONEPositions.Count > 0)
+        {
+            Console.WriteLine("\n***Warning*** the following position(s) in ONE have already expired (based on the date in the ONE filename):");
+            foreach (Position position in alreadyExpiredONEPositions)
+                DisplayONEPosition(position);
         }
     }
 
@@ -1051,7 +1063,7 @@ static class Program
         }
 
         string qty = fields[one_position_columns["Qty"]];
-        if (!int.TryParse(qty, out int quantity))
+        if (!int.TryParse(qty, out int quantity) || quantity <= 0)
         {
             Console.WriteLine($"\n***Error*** ONE position line {line_index + 1} has invalid quantity field: {qty}");
             return null;
@@ -1213,7 +1225,7 @@ static class Program
 
         if (one_quantity == 0)
         {
-            Debug.Assert(ib_stock_or_futures_quantity > 0);
+            Debug.Assert(ib_stock_or_futures_quantity != 0);
             Console.WriteLine($"\n***Error*** IB has stock/futures positions of {ib_stock_or_futures_quantity} equivalent {master_symbol} shares, while ONE has no matching positions");
             // todo: list IB positions
             return false;
@@ -1325,21 +1337,32 @@ static class Program
     {
         Console.WriteLine($"\nConsolidated ONE Positions for {master_symbol}:");
 
-        foreach (Position one_position in consolidatedONEPositions)
-        {
-            switch (one_position.Type)
-            {
-                case SecurityType.Stock:
-                    Console.WriteLine($"{one_position.Symbol}\tIndex\tquantity: {one_position.Quantity}\ttrade(s): {string.Join(",", one_position.TradeIds)}");
-                    break;
-                case SecurityType.Call:
-                case SecurityType.Put:
-                    // create trades list
-                    Console.WriteLine($"{one_position.Symbol}\t{one_position.Type}\tquantity: {one_position.Quantity}\texpiration: {one_position.Expiration}\tstrike: {one_position.Strike}\ttrade(s): {string.Join(",", one_position.TradeIds)}");
-                    break;
-            }
-        }
+        foreach (Position position in consolidatedONEPositions)
+            DisplayONEPosition(position);
+
         Console.WriteLine();
+    }
+
+    static void DisplayONEPosition(Position position)
+    {
+        Debug.Assert(position.Quantity != 0);
+
+        switch (position.Type)
+        {
+            case SecurityType.Stock:
+                Console.WriteLine($"{position.Symbol}\tIndex\tquantity: {position.Quantity}\ttrade(s): {string.Join(",", position.TradeIds)}");
+                break;
+            case SecurityType.Call:
+            case SecurityType.Put:
+                if (position.TradeIds.Count == 0)
+                    Console.WriteLine($"{position.Symbol}\t{position.Type}\tquantity: {position.Quantity}\texpiration: {position.Expiration}\tstrike: {position.Strike}");
+                else
+                    Console.WriteLine($"{position.Symbol}\t{position.Type}\tquantity: {position.Quantity}\texpiration: {position.Expiration}\tstrike: {position.Strike}\ttrade(s): {string.Join(",", position.TradeIds)}");
+                break;
+            default:
+                Debug.Assert(false);
+                break;
+        }
     }
 
     static void DisplayIBPositions()
