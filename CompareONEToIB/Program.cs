@@ -780,7 +780,7 @@ static class Program
 
                 // start new trade - save it in trades Dictionary
                 curOneTrade = ParseONETradeLine(line_index, fields);
-                if (curOneTrade == null)
+                if (curOneTrade == null) 
                     return false;
 
                 ONE_trades.Add(curOneTrade.TradeId, curOneTrade);
