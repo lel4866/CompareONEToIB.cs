@@ -873,7 +873,6 @@ static class Program
         }
         foreach (Position onePosition in alreadyExpiredONEPositions)
             consolidatedONEPositions.Remove(onePosition);
-
     }
 
     static void DisplayONETrades()
