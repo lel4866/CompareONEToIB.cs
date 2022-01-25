@@ -226,8 +226,7 @@ static class Program
 
         DisplayIBPositions();
 
-        if (irrelevantIBPositions.Count > 0)
-            DisplayIrrelevantIBPositions();
+        DisplayIrrelevantIBPositions();
 
         DisplayedIgnoredONEPositions(); // ignored because they expired prior to date in one filename
 
@@ -877,7 +876,6 @@ static class Program
 
     }
 
-
     static void DisplayONETrades()
     {
         Console.WriteLine("\nONE Trades:");
@@ -1373,9 +1371,12 @@ static class Program
     }
     static void DisplayIrrelevantIBPositions()
     {
-        Console.WriteLine($"\nIB Positions **NOT** related to {master_symbol}:");
-        foreach (Position position in irrelevantIBPositions)
-            DisplayIBPosition(position);
+        if (irrelevantIBPositions.Count > 0)
+        {
+            Console.WriteLine($"\nIB Positions **NOT** related to {master_symbol}:");
+            foreach (Position position in irrelevantIBPositions)
+                DisplayIBPosition(position);
+        }
     }
 
     static void DisplayIBPosition(Position position)
