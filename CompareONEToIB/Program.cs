@@ -183,7 +183,7 @@ static class Program
     static readonly HashSet<Position> alreadyExpiredONEPositions = new();
 
     // key is (symbol, OptionType, Expiration, Strike);
-    static readonly HashSet<Position> ibPositions = new();
+    static readonly SortedSet<Position> ibPositions = new();
 
     // these positions are not relevant to specified master_symbol, but we want to display them so user can verify
     static readonly HashSet<Position> irrelevantIBPositions = new();
@@ -218,6 +218,8 @@ static class Program
         if (!rc)
             return -1;
 
+        DisplayedIgnoredONEPositions(); // ignored because they expired prior to date in one filename
+
         DisplayONEPositions();
 
         rc = ProcessIBFile(ib_filename);
@@ -227,8 +229,6 @@ static class Program
         DisplayIBPositions();
 
         DisplayIrrelevantIBPositions();
-
-        DisplayedIgnoredONEPositions(); // ignored because they expired prior to date in one filename
 
         rc = CompareONEPositionsToIBPositions();
         if (!rc)
@@ -916,6 +916,7 @@ static class Program
             foreach (Position position in alreadyExpiredONEPositions)
                 DisplayONEPosition(position);
         }
+        Console.WriteLine();
     }
 
     // remove closed trades from ONE_trades
@@ -1329,11 +1330,9 @@ static class Program
         return true;
     }
 
-    //static Dictionary<(string, OptionType, DateOnly, int), (int, HashSet<string>)> consolidatedOnePositions = new();
     static void DisplayONEPositions()
     {
         Console.WriteLine($"\nConsolidated ONE Positions for {master_symbol}:");
-
         foreach (Position position in consolidatedONEPositions)
             DisplayONEPosition(position);
 
@@ -1368,15 +1367,6 @@ static class Program
         foreach (Position position in ibPositions)
             DisplayIBPosition(position);
     }
-    static void DisplayIrrelevantIBPositions()
-    {
-        if (irrelevantIBPositions.Count > 0)
-        {
-            Console.WriteLine($"\nIB Positions **NOT** related to {master_symbol}:");
-            foreach (Position position in irrelevantIBPositions)
-                DisplayIBPosition(position);
-        }
-    }
 
     static void DisplayIBPosition(Position position)
     {
@@ -1389,14 +1379,22 @@ static class Program
                 Console.WriteLine($"{position.Symbol}\t{position.Type}\tquantity: {position.Quantity}");
                 break;
             case SecurityType.Futures:
-                //Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, quantity = {position.quantity}");
                 Console.WriteLine($"{position.Symbol}\t{position.Type}\tquantity: {position.Quantity}\texpiration: {position.Expiration}");
                 break;
             case SecurityType.Call:
             case SecurityType.Put:
-                //Console.WriteLine($"{position.symbol} {position.optionType}: expiration = {position.expiration}, strike = {position.strike}, quantity = {position.quantity}");
                 Console.WriteLine($"{position.Symbol}\t{position.Type}\tquantity: {position.Quantity}\texpiration: {position.Expiration}\tstrike: {position.Strike}");
                 break;
+        }
+    }
+
+    static void DisplayIrrelevantIBPositions()
+    {
+        if (irrelevantIBPositions.Count > 0)
+        {
+            Console.WriteLine($"\nIB Positions **NOT** related to {master_symbol}:");
+            foreach (Position position in irrelevantIBPositions)
+                DisplayIBPosition(position);
         }
     }
 }
