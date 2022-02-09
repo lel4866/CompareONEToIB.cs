@@ -18,6 +18,16 @@ the displayed IB positions it is analyzing. The same logic is applied when analy
 **This program has not been thoroughly tested and likely has bugs. In addition, the file formats used by IB and ONE
 can change without notice, which could cause the program to crash or produce erroneous results. Use at your own risk!**
 
+## What's New
+Sometimes you have trades in a ONE account that aren't real. You just modeled something to see what it looked like. You can instruct
+this program to ignore those trades by starting the ONE Trade Name with a minus ('-').
+
+The program will now ignore ONE trades made with an underlying instrument that is not the instrument specified in the command line
+(or, if not specified in the command line, SPX). So, for instance, if you have made trades in /ES in ONE, but the underlying is
+specified as SPX, the program will ignore those trades. Note that this IS NOT the case for Interactive Brokers positions. If the
+specified underlying is SPX, IB positions in /ES will be treated as hedge trades and matched up against underlying position in
+the SPX index in ONE.
+
 ## Command Line
 This program is run from the command line, so you must open a terminal and either have this program on your PATH or change
 the current working directory to the one containing this program.
