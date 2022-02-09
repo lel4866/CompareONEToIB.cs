@@ -145,8 +145,8 @@ class ONETrade
 
 static class Program
 {
-    internal const string version = "0.0.5";
-    internal const string version_date = "2022-01-22";
+    internal const string version = "0.0.6";
+    internal const string version_date = "2022-02-09";
 
     internal static string? ib_filename = null;
     internal static string ib_directory = @"C:\Users\lel48\OneDrive\Documents\IBExport\";
