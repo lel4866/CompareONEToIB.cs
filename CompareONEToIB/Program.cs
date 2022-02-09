@@ -506,9 +506,11 @@ static class Program
         }
         if (quantity == 0)
             return 1;
-        
-        var ibPosition = new Position(isONEPosition: false);
-        ibPosition.Quantity = quantity;
+
+        var ibPosition = new Position(isONEPosition: false)
+        {
+            Quantity = quantity
+        };
 
         string description = fields[ib_description_col];
         int security_type_col = ib_columns["Security Type"];
