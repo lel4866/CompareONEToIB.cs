@@ -180,19 +180,18 @@ static class Program
     static readonly Dictionary<string, int> one_trade_columns = new(); // key is column name, value is column index
     static readonly Dictionary<string, int> one_position_columns = new(); // key is column name, value is column index
     static readonly Dictionary<string, ONETrade> oneTrades = new(); // key is trade_id
-    static readonly HashSet<Position> alreadyExpiredONEPositions = new();
+    static readonly SortedSet<Position> alreadyExpiredONEPositions = new();
 
     // key is (symbol, OptionType, Expiration, Strike);
     static readonly SortedSet<Position> ibPositions = new();
 
     // these positions are not relevant to specified master_symbol, but we want to display them so user can verify
-    static readonly HashSet<Position> irrelevantIBPositions = new();
+    static readonly SortedSet<Position> irrelevantIBPositions = new();
 
     // dictionary of ONE trades with key of trade id
     static readonly SortedDictionary<string, ONETrade> ONE_trades = new();
 
     // consolidated ONE positions; key is (symbol, OptionType, Expiration, Strike)
-    //static readonly SortedDictionary<Position, ConsolidatedQuantity> consolidatedONEPositions = new();
     static readonly SortedSet<Position> consolidatedONEPositions = new();
 
     static int Main(string[] args)
