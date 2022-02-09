@@ -780,6 +780,14 @@ static class Program
                     continue;
                 }
 
+                // skip trades whose trade name starts with a minus ('-')
+                string tradeName = fields[one_trade_columns["TradeName"]];
+                if (tradeName.StartsWith('-'))
+                {
+                    skip_current_trade = true;
+                    continue;
+                }
+
                 // start new trade - save it in trades Dictionary
                 curOneTrade = ParseONETradeLine(line_index, fields);
                 if (curOneTrade == null) 
