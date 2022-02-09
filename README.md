@@ -1,4 +1,4 @@
-# CompareONEToIB.cs
+# CompareONEToIB.cs V0.0.6
 
 This program compares exported data from OptioneNet Explorer (ONE) to that from Interactive Brokers(IB) to make
 sure that the option positions actually held in IB are the ones that are beng modeled by ONE.
