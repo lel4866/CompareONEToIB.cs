@@ -1308,13 +1308,14 @@ static class Program
                     Debug.Assert(false);
                     break;
             }
-
         }
+
         // process last field
         switch (state)
         {
-            case 0: // must be blank line
-                Debug.Assert(line.Length == 0);
+            case 0: // must be blank line or trailing comma
+                if (line.Length > 0)
+                    fields.Add(""); // add empty last field
                 break;
 
             case 1: // field started with non-quote...standard end
