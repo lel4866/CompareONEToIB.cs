@@ -325,7 +325,7 @@ static class Program
                 return (null, latestDate);
             }
 
-            files = Directory.GetFiles(ib_directory, filename_pattern, SearchOption.TopDirectoryOnly);
+            files = Directory.GetFiles(directory, filename_pattern, SearchOption.TopDirectoryOnly);
             bool file_found = false;
             foreach (string full_filename in files)
             {
@@ -373,7 +373,7 @@ static class Program
 
             if (!file_found)
             {
-                Console.WriteLine($"\n***Error*** No IB files found in {ib_directory} with following filename pattern: [filtered_]portfolio.yyyymmdd.csv");
+                Console.WriteLine($"\n***Error*** No IB files found in {directory} with following filename pattern: [filtered_]portfolio.yyyymmdd.csv");
                 return (null, latestDate);
             }
 
