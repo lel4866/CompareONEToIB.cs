@@ -382,7 +382,7 @@ static class Program
 
         if (!File.Exists(specified_full_filename))
         {
-            Console.WriteLine($"\n***Error*** Specified ONE file {specified_full_filename} does not exist");
+            Console.WriteLine($"\n***Error*** Specified IB file {specified_full_filename} does not exist");
             return (null, latestDate);
         }
 
@@ -399,7 +399,7 @@ static class Program
 
         if (!DateOnly.TryParse(datestr, out latestDate))
         {
-            Console.WriteLine($"\n***Error*** Specified ONE file does not match following pattern: [filtered_]portfolio.yyyymmdd.csv");
+            Console.WriteLine($"\n***Error*** Specified IB file does not match following pattern: [filtered_]portfolio.yyyymmdd.csv");
             return (null, latestDate);
         }
 
@@ -774,16 +774,16 @@ static class Program
                     return false;
                 }
 
-                // if this set of positions is not for symbol (master_symbol) we are analyzing...ignore trade (all lines until we encounter blank line) 
-                if (master_symbol != fields[one_trade_columns["Underlying"]])
+                // skip trades whose trade name starts with a minus ('-')
+                string tradeName = fields[one_trade_columns["TradeName"]];
+                if (tradeName.StartsWith('-'))
                 {
                     skip_current_trade = true;
                     continue;
                 }
 
-                // skip trades whose trade name starts with a minus ('-')
-                string tradeName = fields[one_trade_columns["TradeName"]];
-                if (tradeName.StartsWith('-'))
+                // skip ONE trades not in master symbol
+                if (master_symbol != fields[one_trade_columns["Underlying"]])
                 {
                     skip_current_trade = true;
                     continue;
@@ -946,8 +946,6 @@ static class Program
     // we don't parse Margin,Comms,PnL,PnLperc
     static ONETrade? ParseONETradeLine(int line_index, List<string> fields)
     {
-        Debug.Assert(master_symbol == fields[one_trade_columns["Underlying"]]);
-
         ONETrade oneTrade = new();
 
         oneTrade.Account = fields[one_trade_columns["Account"]];
