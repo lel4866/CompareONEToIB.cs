@@ -774,7 +774,7 @@ static class Program
                     return false;
                 }
 
-                // skip trades whose trade name starts with a minus ('-')
+                // skip ONE trades whose trade name starts with a minus ('-'): this is the way the user tells this program to skio trades
                 string tradeName = fields[one_trade_columns["TradeName"]];
                 if (tradeName.StartsWith('-'))
                 {
