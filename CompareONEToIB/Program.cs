@@ -893,16 +893,16 @@ static class Program
             {
                 if (one_trade.Positions.Count != 0)
                 {
-                    Console.WriteLine($"\n***Error*** Trade {one_trade.TradeId} is closed, but contains positions:");
+                    Console.WriteLine($"\n***Error*** Trade {one_trade.TradeId} ({one_trade.TradeName}) is closed, but contains positions:");
                 }
                 else
                 {
-                    Console.WriteLine($"\nTrade {one_trade.TradeId}: Closed. No positions");
+                    Console.WriteLine($"\nTrade #{one_trade.TradeId} {one_trade.TradeName}: Closed. No positions");
                     continue;
                 }
             }
             else
-                Console.WriteLine($"\nTrade {one_trade.TradeId}:");
+                Console.WriteLine($"\nTrade #{one_trade.TradeId} {one_trade.TradeName}:");
 
             if (one_trade.Positions.Count == 0)
             {
@@ -1327,7 +1327,6 @@ static class Program
                 return false;
 
             case 3: // field ended with quote
-                string dbg = line[start..^1];
                 fields.Add(line[start..^1].Trim());
                 break;
 
