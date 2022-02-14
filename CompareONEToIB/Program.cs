@@ -9,8 +9,8 @@ namespace CompareOneToIB;
 
 static class Program
 {
-    internal const string version = "0.0.6";
-    internal const string version_date = "2022-02-09";
+    internal const string version = "0.0.7";
+    internal const string version_date = "2022-02-14";
 
     static int Main(string[] args)
     {
