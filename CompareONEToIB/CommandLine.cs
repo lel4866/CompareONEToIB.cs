@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using CompareOneToIB;
+﻿using CompareONEToBroker;
 
-namespace CompareONEToIB;
+namespace CompareOneToIB;
 
 internal static class CommandLine
 {
@@ -132,12 +127,12 @@ internal static class CommandLine
                 {
                     case "symbol":
                         string uc_arg = arg.ToUpper();
-                        if (!Program.associated_symbols.ContainsKey(uc_arg))
+                        if (!ONE.associated_symbols.ContainsKey(uc_arg))
                         {
                             Console.WriteLine("***Command Line Error*** Unknown symbol: " + uc_arg + ". Program exiting.");
                             System.Environment.Exit(-1);
                         }
-                        Program.master_symbol = uc_arg;
+                        ONE.master_symbol = uc_arg;
                         break;
 
                     case "ibfile":
@@ -149,7 +144,7 @@ internal static class CommandLine
                                 Console.WriteLine("***Command Line Error*** IB File: " + arg + " does not exist. Program exiting.");
                             exit = true;
                         }
-                        Program.ib_filename = arg;
+                        ONE.broker_filename = arg;
                         break;
 
                     case "ibdir":
@@ -164,7 +159,7 @@ internal static class CommandLine
                         arg_with_backslash = arg;
                         if (!arg.EndsWith('\\'))
                             arg_with_backslash += '\\';
-                        Program.ib_directory = arg_with_backslash;
+                        ONE.broker_directory = arg_with_backslash;
                         break;
 
                     case "onefile":
@@ -176,7 +171,7 @@ internal static class CommandLine
                                 Console.WriteLine("***Command Line Error*** ONE File: " + arg + " does not exist. Program exiting.");
                             exit = true;
                         }
-                        Program.one_filename = arg;
+                        ONE.one_filename = arg;
                         break;
 
                     case "onedir":
@@ -191,7 +186,7 @@ internal static class CommandLine
                         arg_with_backslash = arg;
                         if (!arg.EndsWith('\\'))
                             arg_with_backslash += '\\';
-                        Program.one_directory = arg_with_backslash;
+                        ONE.one_directory = arg_with_backslash;
                         break;
                 }
                 arg_name = null;
@@ -203,7 +198,7 @@ internal static class CommandLine
 
         if (!symbol_specified)
             // default is spx
-            Program.master_symbol = "SPX";
+            ONE.master_symbol = "SPX";
 
         if (!id_specified && !if_specified)
         {
@@ -213,7 +208,7 @@ internal static class CommandLine
                 curdir = VSProjectDir;
             curdir = Path.GetFullPath(curdir + "/IBExport/"); // use GetFullPath to get "normalized" directory path
             if (Directory.Exists(curdir))
-                Program.ib_directory = curdir;
+                ONE.broker_directory = curdir;
             else
             {
                 Console.WriteLine("***Command Line Error*** No IB file (--ibfile) or directory (--ibdir) specified, and default directory (cwd/IBExport) doesn't exist");
@@ -229,7 +224,7 @@ internal static class CommandLine
                 curdir = VSProjectDir;
             curdir = Path.GetFullPath(curdir + "/ONEExport/"); // use GetFullPath to get "normalized" directory path
             if (Directory.Exists(curdir))
-                Program.one_directory = curdir;
+                ONE.one_directory = curdir;
             else
             {
                 Console.WriteLine("***Command Line Error*** No ONE file (--onefile) or directory (--onedir) specified, and default directory (cwd/ONEExport) doesn't exist");
